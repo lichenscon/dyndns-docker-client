@@ -113,12 +113,10 @@ def update_dyndns2(provider, ip, ip6=None):
     password = provider.get('password')
 
     if auth_method == "basic":
-        # username und password oder username und token
         auth = (username or token, password or token or "x")
     elif auth_method == "bearer":
         headers['Authorization'] = f"Bearer {token}"
-    else:  # token als Query-Parameter
-        # Die meisten akzeptieren key, token oder user
+    else:
         if 'key' in provider:
             params['key'] = provider['key']
         elif 'user' in provider:
@@ -129,13 +127,27 @@ def update_dyndns2(provider, ip, ip6=None):
             params['key'] = token
 
     response = requests.get(url, params=params, auth=auth, headers=headers)
-    log(f"{provider.get('name', 'dyndns2')} response: {response.text}", section="DYNDNS2")
+    provider_name = provider.get('name', 'dyndns2')
+    log(f"[{provider_name}] response: {response.text}", section="DYNDNS2")
 
     # Erfolg prüfen
-    if any(success in response.text.lower() for success in ["good", "success", "nochg"]):
+    resp_text = response.text.lower().strip()
+    if any(success in resp_text for success in ["good", "success", "nochg"]):
         return True
     else:
-        log(f"DynDNS2-Update fehlgeschlagen: {response.text}", "ERROR", section="DYNDNS2")
+        if "unknown" in resp_text:
+            log(
+                f"[{provider_name}] DynDNS2-Update fehlgeschlagen: Unbekannte Antwort vom Server ('unknown'). "
+                "Bitte prüfe Authentifizierung, Domain/Host und Token/Passwort.",
+                "ERROR",
+                section="DYNDNS2"
+            )
+        else:
+            log(
+                f"[{provider_name}] DynDNS2-Update fehlgeschlagen: {response.text}",
+                "ERROR",
+                section="DYNDNS2"
+            )
         return False
 
 def update_provider(provider, ip, ip6=None):
