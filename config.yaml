@@ -1,16 +1,40 @@
 timer: 300  # Intervall in Sekunden
 ip_service: "https://api.ipify.org"
 providers:
-  - name: duckdns
-    url: "https://www.duckdns.org/update"
+  - name: duckdns # DuckDNS provider
+    url: "https://www.duckdns.org/update" # URL for DuckDNS update
     params:
-      domains: "example"
-      token: "your-duckdns-token"
-      ip: ""
+      domains: "example" # Your DuckDNS subdomain
+      token: "your-duckdns-token" # Your DuckDNS token
+      ip: ""  # Optional, leave empty for current IP
   - name: noip
     url: "https://dynupdate.no-ip.com/nic/update"
     params:
-      hostname: "example.ddns.net"
-      username: "your-noip-username"
-      password: "your-noip-password"
-      ip: ""
+      hostname: "example.ddns.net" # Your No-IP hostname
+      username: "your-noip-username" # Your No-IP username
+      password: "your-noip-password" # Your No-IP password
+      ip: ""    # Optional, leave empty for current IP
+
+  - name: cloudflare
+    zone_id: "deine_zone_id"
+    dns_record_id: "dein_dns_record_id"
+    api_token: "dein_cloudflare_api_token"
+    record_name: "sub.domain.tld"
+    proxied: false
+
+  - name: ipv64
+    url: "https://ipv64.net/nic/update"
+    auth_method: "token"  # "token", "basic", "bearer"
+    token: "dein_update_token"
+    domain: "deinedomain.ipv64.net"
+    ip: ""    # wird vom Skript gesetzt
+    ip6: ""   # optional, falls du IPv6 setzen willst
+
+  - name: custom-dyndns2
+    url: "https://example.com/nic/update"
+    protocol: "dyndns2"
+    auth_method: "token"  # oder "basic", "bearer"
+    token: "dein_update_token"
+    domain: "deinedomain.example.com"
+    ip: ""
+    ip6: ""
