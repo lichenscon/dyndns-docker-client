@@ -1,3 +1,5 @@
+timer: 300  # Intervall in Sekunden
+ip_service: "https://api.ipify.org"
 providers:
   - name: duckdns
     url: "https://www.duckdns.org/update"
