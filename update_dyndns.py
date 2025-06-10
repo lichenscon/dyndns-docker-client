@@ -2,8 +2,8 @@ import requests
 import yaml
 import time
 
-def log(msg, level="INFO"):
-    print(f"[{level}] {msg}", flush=True)
+def log(msg, level="INFO", section="MAIN"):
+    print(f"[{level}] {section} --> {msg}", flush=True)
 
 def get_public_ip(ip_service):
     try:
@@ -45,7 +45,6 @@ def update_cloudflare(provider, ip):
     api_token = provider['api_token']
     zone = provider['zone']
     record_name = provider['record_name']
-    # IDs automatisch holen
     zone_id = get_cloudflare_zone_id(api_token, zone)
     record_id = get_cloudflare_record_id(api_token, zone_id, record_name)
     url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record_id}"
@@ -56,11 +55,10 @@ def update_cloudflare(provider, ip):
     data = {
         "type": "A",
         "name": record_name,
-        "content": ip,
-        "proxied": provider.get("proxied", False)
+        "content": ip
     }
     resp = requests.patch(url, json=data, headers=headers)
-    log(f"cloudflare response: {resp.text}")
+    log(f"cloudflare response: {resp.text}", section="CLOUDFLARE")
 
 def update_ipv64(provider, ip, ip6=None):
     url = provider['url']
@@ -87,7 +85,7 @@ def update_ipv64(provider, ip, ip6=None):
     if ip6:
         params['ip6'] = ip6
     response = requests.get(url, params=params, auth=auth, headers=headers)
-    log(f"ipv64 response: {response.text}")
+    log(f"ipv64 response: {response.text}", section="IPV64")
 
 def update_dyndns2(provider, ip, ip6=None):
     url = provider['url']
@@ -114,7 +112,7 @@ def update_dyndns2(provider, ip, ip6=None):
     if ip6:
         params['ip6'] = ip6
     response = requests.get(url, params=params, auth=auth, headers=headers)
-    log(f"{provider.get('name', 'dyndns2')} response: {response.text}")
+    log(f"{provider.get('name', 'dyndns2')} response: {response.text}", section="DYNDNS2")
 
 def update_provider(provider, ip, ip6=None):
     try:
@@ -135,28 +133,28 @@ def update_provider(provider, ip, ip6=None):
         if 'username' in params and 'password' in params:
             auth = (params.pop('username'), params.pop('password'))
         response = requests.get(url, params=params, auth=auth)
-        log(f"{provider.get('name', 'provider')} response: {response.text}")
+        log(f"{provider.get('name', 'provider')} response: {response.text}", section="PROVIDER")
         return True
     except Exception as e:
-        log(f"Update für Provider '{provider.get('name')}' fehlgeschlagen: {e}", "ERROR")
+        log(f"Update für Provider '{provider.get('name')}' fehlgeschlagen: {e}", "ERROR", section=provider.get("name", "PROVIDER"))
         return False
 
 def main():
-    log("DynDNS Client startet...")
+    log("DynDNS Client startet...", section="MAIN")
     with open('config.yaml', 'r') as f:
         config = yaml.safe_load(f)
     timer = config.get('timer', 300)
     ip_service = config.get('ip_service', 'https://api.ipify.org')
     providers = config['providers']
 
-    log(f"Teste Erreichbarkeit von ip_service: {ip_service}")
+    log(f"Teste Erreichbarkeit von ip_service: {ip_service}", section="MAIN")
     test_ip = get_public_ip(ip_service)
     if not test_ip:
         log("Programm wird beendet, da ip_service nicht erreichbar ist.", "ERROR")
         return
-    log(f"ip_service erreichbar. Öffentliche IP: {test_ip}")
+    log(f"ip_service erreichbar. Öffentliche IP: {test_ip}", section="MAIN")
 
-    log("Starte Initial-Update-Durchlauf für alle Provider...")
+    log("Starte Initial-Update-Durchlauf für alle Provider...", section="MAIN")
     for provider in providers:
         result = update_provider(provider, test_ip)
         if result:
@@ -167,11 +165,11 @@ def main():
     last_ip = test_ip
     while True:
         current_ip = get_public_ip(ip_service)
-        log(f"Aktuelle öffentliche IP: {current_ip}")
+        log(f"Aktuelle öffentliche IP: {current_ip}", section="MAIN")
         if not current_ip:
             log("Konnte öffentliche IP nicht ermitteln. Warte auf nächsten Versuch.", "ERROR")
         elif current_ip != last_ip:
-            log(f"Neue IP erkannt: {current_ip} (vorher: {last_ip}) – Update wird durchgeführt.")
+            log(f"Neue IP erkannt: {current_ip} (vorher: {last_ip}) – Update wird durchgeführt.", section="MAIN")
             for provider in providers:
                 result = update_provider(provider, current_ip)
                 if result:
@@ -180,7 +178,7 @@ def main():
                     log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR")
             last_ip = current_ip
         else:
-            log(f"IP unverändert ({current_ip}), kein Update notwendig.")
+            log(f"IP unverändert ({current_ip}), kein Update notwendig.", section="MAIN")
         time.sleep(timer)
 
 if __name__ == "__main__":
