@@ -60,7 +60,7 @@ def update_cloudflare(provider, ip):
         current_content = data["result"]["content"]
         if current_content == ip:
             log(f"Kein Update notwendig (IP bereits gesetzt: {ip}).", "INFO", section="CLOUDFLARE")
-            return True
+            return "nochg"
     # Update durchführen
     url_patch = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record_id}"
     data_patch = {
@@ -70,7 +70,9 @@ def update_cloudflare(provider, ip):
     }
     resp_patch = requests.patch(url_patch, json=data_patch, headers=headers)
     log(f"cloudflare response: {resp_patch.text}", section="CLOUDFLARE")
-    return resp_patch.ok
+    if resp_patch.ok:
+        return "updated"
+    return False
 
 def update_ipv64(provider, ip, ip6=None):
     url = provider['url']
@@ -95,11 +97,21 @@ def update_ipv64(provider, ip, ip6=None):
         params['ip6'] = ip6
     response = requests.get(url, params=params, auth=auth, headers=headers)
     log(f"ipv64 response: {response.text}", section="IPV64")
+    resp_text = response.text.lower().strip()
     # Updatelimit-Check
-    if "overcommited" in response.text or response.status_code == 403:
+    if "overcommited" in resp_text or response.status_code == 403:
         log("Updateintervall bei ipv64.net überschritten! Updatelimit erreicht.", "ERROR", section="IPV64")
         return False
-    return True
+    # Kein Update notwendig
+    if "nochg" in resp_text or "no change" in resp_text:
+        log("Kein Update notwendig (nochg).", "INFO", section="IPV64")
+        return "nochg"
+    # Erfolg
+    if "good" in resp_text or "success" in resp_text:
+        return "updated"
+    # Fehler
+    log(f"ipv64-Update fehlgeschlagen: {response.text}", "ERROR", section="IPV64")
+    return False
 
 def update_dyndns2(provider, ip, ip6=None):
     url = provider['url']
@@ -145,7 +157,6 @@ def update_dyndns2(provider, ip, ip6=None):
 
     # Erfolg prüfen
     resp_text = response.text.lower().strip()
-    # Rückgabewerte: "updated", "nochg", False
     if "nochg" in resp_text:
         log(f"[{provider_name}] Kein Update notwendig (nochg).", "INFO", section="DYNDNS2")
         return "nochg"
@@ -162,16 +173,23 @@ def update_dyndns2(provider, ip, ip6=None):
 def update_provider(provider, ip, ip6=None):
     try:
         if provider.get("name") == "cloudflare":
-            update_cloudflare(provider, ip)
-            log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="CLOUDFLARE")
-            return True
+            result = update_cloudflare(provider, ip)
+            if result == "updated":
+                log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="CLOUDFLARE")
+            elif result == "nochg":
+                log(f"Provider '{provider.get('name')}' war bereits aktuell, kein Update durchgeführt.", "INFO", section="CLOUDFLARE")
+            else:
+                log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section="CLOUDFLARE")
+            return result == "updated"
         if provider.get("name") == "ipv64":
             result = update_ipv64(provider, ip, ip6)
-            if result:
+            if result == "updated":
                 log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="IPV64")
+            elif result == "nochg":
+                log(f"Provider '{provider.get('name')}' war bereits aktuell, kein Update durchgeführt.", "INFO", section="IPV64")
             else:
                 log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section="IPV64")
-            return result
+            return result == "updated"
         if provider.get("protocol") == "dyndns2":
             result = update_dyndns2(provider, ip, ip6)
             if result == "updated":
@@ -189,9 +207,18 @@ def update_provider(provider, ip, ip6=None):
         if 'username' in params and 'password' in params:
             auth = (params.pop('username'), params.pop('password'))
         response = requests.get(url, params=params, auth=auth)
-        log(f"{provider.get('name', 'provider')} response: {response.text}", section=provider.get('name', 'PROVIDER').upper())
-        log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section=provider.get('name', 'PROVIDER').upper())
-        return True
+        resp_text = response.text.lower().strip()
+        section = provider.get('name', 'PROVIDER').upper()
+        log(f"{provider.get('name', 'provider')} response: {response.text}", section=section)
+        if "nochg" in resp_text or "no change" in resp_text:
+            log(f"Provider '{provider.get('name')}' war bereits aktuell, kein Update durchgeführt.", "INFO", section=section)
+            return False
+        elif "good" in resp_text or "success" in resp_text:
+            log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section=section)
+            return True
+        else:
+            log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section=section)
+            return False
     except Exception as e:
         log(f"Update für Provider '{provider.get('name')}' fehlgeschlagen: {e}", "ERROR", section=provider.get("name", "PROVIDER").upper())
         return False
@@ -276,3 +303,6 @@ def main():
                 log(f"IP unverändert ({current_ip}), kein Update notwendig.", section="MAIN")
                 elapsed = 0
                 log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
+
+if __name__ == "__main__":
+    main()
