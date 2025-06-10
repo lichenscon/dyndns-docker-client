@@ -143,16 +143,21 @@ def main():
         providers = config['providers']
 
         current_ip = get_public_ip(ip_service)
-        current_ip6 = get_public_ipv6()  # oder eigenen Service in config.yaml
+        print(f"[INFO] Aktuelle öffentliche IP: {current_ip}")
+
         if not current_ip:
-            print("Konnte öffentliche IP nicht ermitteln. Warte auf nächsten Versuch.")
+            print("[ERROR] Konnte öffentliche IP nicht ermitteln. Warte auf nächsten Versuch.")
         elif current_ip != last_ip:
-            print(f"Neue IP erkannt: {current_ip} (vorher: {last_ip}) – Update wird durchgeführt.")
+            print(f"[INFO] Neue IP erkannt: {current_ip} (vorher: {last_ip}) – Update wird durchgeführt.")
             for provider in providers:
-                update_provider(provider, current_ip, current_ip6)
+                try:
+                    update_provider(provider, current_ip)
+                    print(f"[SUCCESS] Update für Provider '{provider.get('name')}' erfolgreich.")
+                except Exception as e:
+                    print(f"[ERROR] Update für Provider '{provider.get('name')}' fehlgeschlagen: {e}")
             last_ip = current_ip
         else:
-            print(f"IP unverändert ({current_ip}), kein Update notwendig.")
+            print(f"[INFO] IP unverändert ({current_ip}), kein Update notwendig.")
 
         time.sleep(timer)
 

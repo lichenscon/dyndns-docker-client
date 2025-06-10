@@ -6,28 +6,24 @@ providers:
     params:
       domains: "example" # Your DuckDNS subdomain
       token: "your-duckdns-token" # Your DuckDNS token
-      ip: ""  # Optional, leave empty for current IP
+
   - name: noip
     url: "https://dynupdate.no-ip.com/nic/update"
     params:
       hostname: "example.ddns.net" # Your No-IP hostname
       username: "your-noip-username" # Your No-IP username
       password: "your-noip-password" # Your No-IP password
-      ip: ""    # Optional, leave empty for current IP
 
   - name: cloudflare
     zone: "deinedomain.tld"
     api_token: "dein_cloudflare_api_token"
     record_name: "sub.domain.tld"
-    proxied: false
 
   - name: ipv64
     url: "https://ipv64.net/nic/update"
     auth_method: "token"  # "token", "basic", "bearer"
     token: "dein_update_token"
     domain: "deinedomain.ipv64.net"
-    ip: ""    # wird vom Skript gesetzt
-    ip6: ""   # optional, falls du IPv6 setzen willst
 
   - name: custom-dyndns2
     url: "https://example.com/nic/update"
@@ -35,5 +31,3 @@ providers:
     auth_method: "token"  # oder "basic", "bearer"
     token: "dein_update_token"
     domain: "deinedomain.example.com"
-    ip: ""
-    ip6: ""
