@@ -141,11 +141,11 @@ def update_provider(provider, ip, ip6=None):
         if 'username' in params and 'password' in params:
             auth = (params.pop('username'), params.pop('password'))
         response = requests.get(url, params=params, auth=auth)
-        log(f"{provider.get('name', 'provider')} response: {response.text}", section="PROVIDER")
-        log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="PROVIDER")
+        log(f"{provider.get('name', 'provider')} response: {response.text}", section=provider.get('name', 'PROVIDER').upper())
+        log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section=provider.get('name', 'PROVIDER').upper())
         return True
     except Exception as e:
-        log(f"Update für Provider '{provider.get('name')}' fehlgeschlagen: {e}", "ERROR", section=provider.get("name", "PROVIDER"))
+        log(f"Update für Provider '{provider.get('name')}' fehlgeschlagen: {e}", "ERROR", section=provider.get("name", "PROVIDER").upper())
         return False
 
 def main():
@@ -176,7 +176,7 @@ def main():
         current_ip = get_public_ip(ip_service)
         log(f"Aktuelle öffentliche IP: {current_ip}", section="MAIN")
         if not current_ip:
-            log("Konnte öffentliche IP nicht ermitteln. Warte auf nächsten Versuch.", "ERROR")
+            log("Konnte öffentliche IP nicht ermitteln. Warte auf nächsten Versuch.", "ERROR", section="MAIN")
         elif current_ip != last_ip:
             log(f"Neue IP erkannt: {current_ip} (vorher: {last_ip}) – Update wird durchgeführt.", section="MAIN")
             for provider in providers:
@@ -188,6 +188,7 @@ def main():
             last_ip = current_ip
         else:
             log(f"IP unverändert ({current_ip}), kein Update notwendig.", section="MAIN")
+        log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
         time.sleep(timer)
 
 if __name__ == "__main__":
