@@ -63,12 +63,10 @@ def update_cloudflare(provider, ip):
 def update_ipv64(provider, ip, ip6=None):
     url = provider['url']
     params = {}
-    # Domain-Parameter
     if 'domain' in provider:
         params['domain'] = provider['domain']
     elif 'host' in provider:
         params['host'] = provider['host']
-    # Authentifizierung
     auth = None
     headers = {}
     auth_method = provider.get('auth_method', 'token')
@@ -79,13 +77,17 @@ def update_ipv64(provider, ip, ip6=None):
         auth = ('none', token)
     elif auth_method == "bearer":
         headers['Authorization'] = f"Bearer {token}"
-    # IP-Parameter
     if ip:
         params['ip'] = ip
     if ip6:
         params['ip6'] = ip6
     response = requests.get(url, params=params, auth=auth, headers=headers)
     log(f"ipv64 response: {response.text}", section="IPV64")
+    # Updatelimit-Check
+    if "overcommited" in response.text or response.status_code == 403:
+        log("Updateintervall bei ipv64.net überschritten! Updatelimit erreicht.", "ERROR", section="IPV64")
+        return False
+    return True
 
 def update_dyndns2(provider, ip, ip6=None):
     url = provider['url']
@@ -118,12 +120,18 @@ def update_provider(provider, ip, ip6=None):
     try:
         if provider.get("name") == "cloudflare":
             update_cloudflare(provider, ip)
+            log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="CLOUDFLARE")
             return True
         if provider.get("name") == "ipv64":
-            update_ipv64(provider, ip, ip6)
-            return True
+            result = update_ipv64(provider, ip, ip6)
+            if result:
+                log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="IPV64")
+            else:
+                log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section="IPV64")
+            return result
         if provider.get("protocol") == "dyndns2":
             update_dyndns2(provider, ip, ip6)
+            log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="DYNDNS2")
             return True
         # Standard-Provider-Logik
         url = provider['url']
@@ -134,6 +142,7 @@ def update_provider(provider, ip, ip6=None):
             auth = (params.pop('username'), params.pop('password'))
         response = requests.get(url, params=params, auth=auth)
         log(f"{provider.get('name', 'provider')} response: {response.text}", section="PROVIDER")
+        log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="PROVIDER")
         return True
     except Exception as e:
         log(f"Update für Provider '{provider.get('name')}' fehlgeschlagen: {e}", "ERROR", section=provider.get("name", "PROVIDER"))
