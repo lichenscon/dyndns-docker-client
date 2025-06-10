@@ -1,6 +1,7 @@
+import os
+import time
 import requests
 import yaml
-import time
 
 def log(msg, level="INFO", section="MAIN"):
     print(f"[{level}] {section} --> {msg}", flush=True)
@@ -150,7 +151,9 @@ def update_provider(provider, ip, ip6=None):
 
 def main():
     log("DynDNS Client startet...", section="MAIN")
-    with open('config.yaml', 'r') as f:
+    config_path = 'config.yaml'
+    last_config_mtime = os.path.getmtime(config_path)
+    with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     timer = config.get('timer', 300)
     ip_service = config.get('ip_service', 'https://api.ipify.org')
@@ -166,30 +169,64 @@ def main():
     log("Starte Initial-Update-Durchlauf für alle Provider...", section="MAIN")
     for provider in providers:
         result = update_provider(provider, test_ip)
+        section = provider.get('name', 'PROVIDER').upper()
         if result:
-            log(f"Provider '{provider.get('name')}' initial erfolgreich aktualisiert.", "SUCCESS")
+            log(f"Provider '{provider.get('name')}' initial erfolgreich aktualisiert.", "SUCCESS", section=section)
         else:
-            log(f"Provider '{provider.get('name')}' konnte initial nicht aktualisiert werden.", "ERROR")
+            log(f"Provider '{provider.get('name')}' konnte initial nicht aktualisiert werden.", "ERROR", section=section)
 
     last_ip = test_ip
+    elapsed = 0
+    check_interval = 2  # Sekunden, wie oft auf Config-Änderung geprüft wird
+
     while True:
-        current_ip = get_public_ip(ip_service)
-        log(f"Aktuelle öffentliche IP: {current_ip}", section="MAIN")
-        if not current_ip:
-            log("Konnte öffentliche IP nicht ermitteln. Warte auf nächsten Versuch.", "ERROR", section="MAIN")
-        elif current_ip != last_ip:
-            log(f"Neue IP erkannt: {current_ip} (vorher: {last_ip}) – Update wird durchgeführt.", section="MAIN")
+        time.sleep(check_interval)
+        elapsed += check_interval
+
+        # Prüfe, ob sich die Config geändert hat
+        current_mtime = os.path.getmtime(config_path)
+        if current_mtime != last_config_mtime:
+            log("Änderung an config.yaml erkannt. Lade neue Konfiguration und starte einen neuen Durchlauf.", section="MAIN")
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+            timer = config.get('timer', 300)
+            ip_service = config.get('ip_service', 'https://api.ipify.org')
+            providers = config['providers']
+            last_config_mtime = current_mtime
+            current_ip = get_public_ip(ip_service)
+            log(f"Aktuelle öffentliche IP: {current_ip}", section="MAIN")
             for provider in providers:
                 result = update_provider(provider, current_ip)
+                section = provider.get('name', 'PROVIDER').upper()
                 if result:
-                    log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS")
+                    log(f"Provider '{provider.get('name')}' nach Config-Änderung erfolgreich aktualisiert.", "SUCCESS", section=section)
                 else:
-                    log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR")
+                    log(f"Provider '{provider.get('name')}' konnte nach Config-Änderung nicht aktualisiert werden.", "ERROR", section=section)
             last_ip = current_ip
-        else:
-            log(f"IP unverändert ({current_ip}), kein Update notwendig.", section="MAIN")
-        log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
-        time.sleep(timer)
+            elapsed = 0  # Timer zurücksetzen
+            log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
+            continue
+
+        # Timer-Update wie gehabt
+        if elapsed >= timer:
+            current_ip = get_public_ip(ip_service)
+            log(f"Aktuelle öffentliche IP: {current_ip}", section="MAIN")
+            if not current_ip:
+                log("Konnte öffentliche IP nicht ermitteln. Warte auf nächsten Versuch.", "ERROR", section="MAIN")
+            elif current_ip != last_ip:
+                log(f"Neue IP erkannt: {current_ip} (vorher: {last_ip}) – Update wird durchgeführt.", section="MAIN")
+                for provider in providers:
+                    result = update_provider(provider, current_ip)
+                    section = provider.get('name', 'PROVIDER').upper()
+                    if result:
+                        log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section=section)
+                    else:
+                        log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section=section)
+                last_ip = current_ip
+            else:
+                log(f"IP unverändert ({current_ip}), kein Update notwendig.", section="MAIN")
+            log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
+            elapsed = 0
 
 if __name__ == "__main__":
     main()
