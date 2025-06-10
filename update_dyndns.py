@@ -93,29 +93,50 @@ def update_ipv64(provider, ip, ip6=None):
 def update_dyndns2(provider, ip, ip6=None):
     url = provider['url']
     params = {}
-    # Domain-Parameter
+    # Domain/Host
     if 'domain' in provider:
         params['domain'] = provider['domain']
     elif 'host' in provider:
         params['host'] = provider['host']
+    # IP
+    if ip:
+        params['ip'] = ip
+    if ip6:
+        params['ip6'] = ip6
+
     # Authentifizierung
     auth = None
     headers = {}
     auth_method = provider.get('auth_method', 'token')
     token = provider.get('token')
-    if auth_method == "token":
-        params['key'] = token
-    elif auth_method == "basic":
-        auth = ('none', token)
+    username = provider.get('username')
+    password = provider.get('password')
+
+    if auth_method == "basic":
+        # username und password oder username und token
+        auth = (username or token, password or token or "x")
     elif auth_method == "bearer":
         headers['Authorization'] = f"Bearer {token}"
-    # IP-Parameter
-    if ip:
-        params['ip'] = ip
-    if ip6:
-        params['ip6'] = ip6
+    else:  # token als Query-Parameter
+        # Die meisten akzeptieren key, token oder user
+        if 'key' in provider:
+            params['key'] = provider['key']
+        elif 'user' in provider:
+            params['user'] = provider['user']
+        elif 'token' in provider:
+            params['token'] = provider['token']
+        else:
+            params['key'] = token
+
     response = requests.get(url, params=params, auth=auth, headers=headers)
     log(f"{provider.get('name', 'dyndns2')} response: {response.text}", section="DYNDNS2")
+
+    # Erfolg prüfen
+    if any(success in response.text.lower() for success in ["good", "success", "nochg"]):
+        return True
+    else:
+        log(f"DynDNS2-Update fehlgeschlagen: {response.text}", "ERROR", section="DYNDNS2")
+        return False
 
 def update_provider(provider, ip, ip6=None):
     try:
