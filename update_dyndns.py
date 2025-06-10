@@ -164,9 +164,12 @@ def update_provider(provider, ip, ip6=None):
                 log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section="IPV64")
             return result
         if provider.get("protocol") == "dyndns2":
-            update_dyndns2(provider, ip, ip6)
-            log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="DYNDNS2")
-            return True
+            result = update_dyndns2(provider, ip, ip6)
+            if result:
+                log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="DYNDNS2")
+            else:
+                log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section="DYNDNS2")
+            return result
         # Standard-Provider-Logik
         url = provider['url']
         params = provider.get('params', {}).copy()
