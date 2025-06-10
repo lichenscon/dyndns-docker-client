@@ -48,18 +48,29 @@ def update_cloudflare(provider, ip):
     record_name = provider['record_name']
     zone_id = get_cloudflare_zone_id(api_token, zone)
     record_id = get_cloudflare_record_id(api_token, zone_id, record_name)
-    url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record_id}"
+    # Hole aktuellen Record
+    url_get = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record_id}"
     headers = {
         "Authorization": f"Bearer {api_token}",
         "Content-Type": "application/json"
     }
-    data = {
+    resp_get = requests.get(url_get, headers=headers)
+    data = resp_get.json()
+    if data.get("success") and data["result"]:
+        current_content = data["result"]["content"]
+        if current_content == ip:
+            log(f"Kein Update notwendig (IP bereits gesetzt: {ip}).", "INFO", section="CLOUDFLARE")
+            return True
+    # Update durchführen
+    url_patch = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record_id}"
+    data_patch = {
         "type": "A",
         "name": record_name,
         "content": ip
     }
-    resp = requests.patch(url, json=data, headers=headers)
-    log(f"cloudflare response: {resp.text}", section="CLOUDFLARE")
+    resp_patch = requests.patch(url_patch, json=data_patch, headers=headers)
+    log(f"cloudflare response: {resp_patch.text}", section="CLOUDFLARE")
+    return resp_patch.ok
 
 def update_ipv64(provider, ip, ip6=None):
     url = provider['url']
@@ -134,7 +145,10 @@ def update_dyndns2(provider, ip, ip6=None):
 
     # Erfolg prüfen
     resp_text = response.text.lower().strip()
-    if any(success in resp_text for success in ["good", "success", "nochg"]):
+    if "nochg" in resp_text:
+        log(f"[{provider_name}] Kein Update notwendig (nochg).", "INFO", section="DYNDNS2")
+        return True
+    elif any(success in resp_text for success in ["good", "success"]):
         return True
     else:
         log(
