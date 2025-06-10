@@ -117,24 +117,29 @@ def update_dyndns2(provider, ip, ip6=None):
     log(f"{provider.get('name', 'dyndns2')} response: {response.text}")
 
 def update_provider(provider, ip, ip6=None):
-    if provider.get("name") == "cloudflare":
-        update_cloudflare(provider, ip)
-        return
-    if provider.get("name") == "ipv64":
-        update_ipv64(provider, ip, ip6)
-        return
-    if provider.get("protocol") == "dyndns2":
-        update_dyndns2(provider, ip, ip6)
-        return
-    # Standard-Provider-Logik
-    url = provider['url']
-    params = provider.get('params', {}).copy()
-    params['ip'] = ip
-    auth = None
-    if 'username' in params and 'password' in params:
-        auth = (params.pop('username'), params.pop('password'))
-    response = requests.get(url, params=params, auth=auth)
-    log(f"{provider.get('name', 'provider')} response: {response.text}")
+    try:
+        if provider.get("name") == "cloudflare":
+            update_cloudflare(provider, ip)
+            return True
+        if provider.get("name") == "ipv64":
+            update_ipv64(provider, ip, ip6)
+            return True
+        if provider.get("protocol") == "dyndns2":
+            update_dyndns2(provider, ip, ip6)
+            return True
+        # Standard-Provider-Logik
+        url = provider['url']
+        params = provider.get('params', {}).copy()
+        params['ip'] = ip
+        auth = None
+        if 'username' in params and 'password' in params:
+            auth = (params.pop('username'), params.pop('password'))
+        response = requests.get(url, params=params, auth=auth)
+        log(f"{provider.get('name', 'provider')} response: {response.text}")
+        return True
+    except Exception as e:
+        log(f"Update für Provider '{provider.get('name')}' fehlgeschlagen: {e}", "ERROR")
+        return False
 
 def main():
     log("DynDNS Client startet...")
