@@ -93,16 +93,18 @@ def update_ipv64(provider, ip, ip6=None):
 def update_dyndns2(provider, ip, ip6=None):
     url = provider['url']
     params = {}
-    # Domain/Host
-    if 'domain' in provider:
+    # Domain/Host/Hostname
+    if 'hostname' in provider:
+        params['hostname'] = provider['hostname']
+    elif 'domain' in provider:
         params['domain'] = provider['domain']
     elif 'host' in provider:
         params['host'] = provider['host']
     # IP
     if ip:
-        params['ip'] = ip
+        params['myip'] = ip  # Dynu erwartet 'myip'
     if ip6:
-        params['ip6'] = ip6
+        params['myipv6'] = ip6
 
     # Authentifizierung
     auth = None
@@ -135,19 +137,11 @@ def update_dyndns2(provider, ip, ip6=None):
     if any(success in resp_text for success in ["good", "success", "nochg"]):
         return True
     else:
-        if "unknown" in resp_text:
-            log(
-                f"[{provider_name}] DynDNS2-Update fehlgeschlagen: Unbekannte Antwort vom Server ('unknown'). "
-                "Bitte prüfe Authentifizierung, Domain/Host und Token/Passwort.",
-                "ERROR",
-                section="DYNDNS2"
-            )
-        else:
-            log(
-                f"[{provider_name}] DynDNS2-Update fehlgeschlagen: {response.text}",
-                "ERROR",
-                section="DYNDNS2"
-            )
+        log(
+            f"[{provider_name}] DynDNS2-Update fehlgeschlagen: {response.text}",
+            "ERROR",
+            section="DYNDNS2"
+        )
         return False
 
 def update_provider(provider, ip, ip6=None):
