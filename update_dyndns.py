@@ -20,15 +20,39 @@ def get_public_ipv6(ip_service="https://api64.ipify.org"):
         print(f"Fehler beim Abrufen der öffentlichen IPv6: {e}")
         return None
 
+def get_cloudflare_zone_id(api_token, zone_name):
+    url = f"https://api.cloudflare.com/client/v4/zones?name={zone_name}"
+    headers = {"Authorization": f"Bearer {api_token}"}
+    resp = requests.get(url, headers=headers)
+    data = resp.json()
+    if data.get("success") and data["result"]:
+        return data["result"][0]["id"]
+    raise Exception(f"Zone-ID für {zone_name} nicht gefunden: {data}")
+
+def get_cloudflare_record_id(api_token, zone_id, record_name):
+    url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records?name={record_name}"
+    headers = {"Authorization": f"Bearer {api_token}"}
+    resp = requests.get(url, headers=headers)
+    data = resp.json()
+    if data.get("success") and data["result"]:
+        return data["result"][0]["id"]
+    raise Exception(f"DNS-Record-ID für {record_name} nicht gefunden: {data}")
+
 def update_cloudflare(provider, ip):
-    url = f"https://api.cloudflare.com/client/v4/zones/{provider['zone_id']}/dns_records/{provider['dns_record_id']}"
+    api_token = provider['api_token']
+    zone = provider['zone']
+    record_name = provider['record_name']
+    # IDs automatisch holen
+    zone_id = get_cloudflare_zone_id(api_token, zone)
+    record_id = get_cloudflare_record_id(api_token, zone_id, record_name)
+    url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record_id}"
     headers = {
-        "Authorization": f"Bearer {provider['api_token']}",
+        "Authorization": f"Bearer {api_token}",
         "Content-Type": "application/json"
     }
     data = {
         "type": "A",
-        "name": provider["record_name"],
+        "name": record_name,
         "content": ip,
         "proxied": provider.get("proxied", False)
     }

@@ -16,8 +16,7 @@ providers:
       ip: ""    # Optional, leave empty for current IP
 
   - name: cloudflare
-    zone_id: "deine_zone_id"
-    dns_record_id: "dein_dns_record_id"
+    zone: "deinedomain.tld"
     api_token: "dein_cloudflare_api_token"
     record_name: "sub.domain.tld"
     proxied: false
