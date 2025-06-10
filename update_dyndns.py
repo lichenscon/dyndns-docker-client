@@ -270,10 +270,9 @@ def main():
                     else:
                         log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section=section)
                 last_ip = current_ip
+                elapsed = 0
+                log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
             else:
-                log(f"IP unverändert ({current_ip}), kein Update notwendig.", section="MAIN")            elapsed = 0
-            log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
-_ == "__main__":
-
-
-    main()if __name__ == "__main__":    main()
+                log(f"IP unverändert ({current_ip}), kein Update notwendig.", section="MAIN")
+                elapsed = 0
+                log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
