@@ -1,26 +1,39 @@
-# dyndns-docker-client
+# DynDNS Docker Client
 
-Ein einfach konfigurierbarer DynDNS-Client als Docker-Container. Unterstützt die automatische Aktualisierung von DNS-Einträgen über Umgebungsvariablen.
+Ein einfacher DynDNS-Updater für mehrere Provider, konfigurierbar über eine YAML-Datei.
 
-## Features
+## Konfiguration
 
-- Unterstützt DynDNS-Update via Benutzer/Passwort oder API-Key
-- IP-Erkennung automatisch oder manuell einstellbar
-- Frei konfigurierbarer Intervall
+Bearbeite die Datei `config.yaml` und trage deine Provider und Zugangsdaten ein:
 
-## Nutzung
+```yaml
+providers:
+  - name: duckdns
+    url: "https://www.duckdns.org/update"
+    params:
+      domains: "example"
+      token: "your-duckdns-token"
+      ip: ""
+  - name: noip
+    url: "https://dynupdate.no-ip.com/nic/update"
+    params:
+      hostname: "example.ddns.net"
+      username: "your-noip-username"
+      password: "your-noip-password"
+      ip: ""
+```
 
-### Docker-Image bauen
-```bash
+## Nutzung mit Docker
+
+```sh
 docker build -t dyndns-client .
+docker run --rm dyndns-client
+```
 
-docker run -e DYNDNS_URL="https://dein-dyndns-service/update" \
-           -e DYNDNS_USER="deinbenutzer" \
-           -e DYNDNS_PASS="deinpasswort" \
-           -e DYNDNS_HOSTNAME="deindomain.de" \
-           dyndns-client
+## Abhängigkeiten
 
-docker run -e DYNDNS_URL="https://api.example.com/update" \
-           -e DYNDNS_APIKEY="dein_api_key" \
-           -e DYNDNS_HOSTNAME="deindomain.de" \
-           dyndns-client
+- Python 3.11
+- requests
+- pyyaml
+
+Diese werden automatisch im Docker-Image installiert.

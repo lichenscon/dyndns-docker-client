@@ -1,48 +1,20 @@
-import os
-import time
 import requests
+import yaml
 
-DYNDNS_URL = os.getenv("DYNDNS_URL")
-DYNDNS_USER = os.getenv("DYNDNS_USER")
-DYNDNS_PASS = os.getenv("DYNDNS_PASS")
-DYNDNS_APIKEY = os.getenv("DYNDNS_APIKEY")
-DYNDNS_IP = os.getenv("DYNDNS_IP")
-DYNDNS_HOSTNAME = os.getenv("DYNDNS_HOSTNAME")
-UPDATE_INTERVAL = int(os.getenv("UPDATE_INTERVAL", "300"))  # Sekunden
-
-def get_public_ip():
-    try:
-        return requests.get("https://api.ipify.org").text.strip()
-    except Exception as e:
-        print(f"Fehler beim Ermitteln der IP: {e}")
-        return None
-
-def update_dyndns(ip):
-    headers = {}
+def update_provider(provider):
+    url = provider['url']
+    params = provider['params']
     auth = None
-    params = {
-        "hostname": DYNDNS_HOSTNAME,
-        "myip": ip
-    }
-    if DYNDNS_APIKEY:
-        headers["Authorization"] = f"Bearer {DYNDNS_APIKEY}"
-    elif DYNDNS_USER and DYNDNS_PASS:
-        auth = (DYNDNS_USER, DYNDNS_PASS)
-    else:
-        print("Fehlende Zugangsdaten!")
-        return
+    if 'username' in params and 'password' in params:
+        auth = (params.pop('username'), params.pop('password'))
+    response = requests.get(url, params=params, auth=auth)
+    print(f"{provider['name']} response: {response.text}")
 
-    try:
-        r = requests.get(DYNDNS_URL, params=params, headers=headers, auth=auth)
-        print(f"Update: {r.status_code} {r.text}")
-    except Exception as e:
-        print(f"Fehler beim DynDNS-Update: {e}")
+def main():
+    with open('config.yaml', 'r') as f:
+        config = yaml.safe_load(f)
+    for provider in config['providers']:
+        update_provider(provider)
 
 if __name__ == "__main__":
-    while True:
-        ip = DYNDNS_IP or get_public_ip()
-        if ip:
-            update_dyndns(ip)
-        else:
-            print("Keine IP gefunden, Update übersprungen.")
-        time.sleep(UPDATE_INTERVAL)
+    main()

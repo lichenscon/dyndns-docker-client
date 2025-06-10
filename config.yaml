@@ -1,0 +1,14 @@
+providers:
+  - name: duckdns
+    url: "https://www.duckdns.org/update"
+    params:
+      domains: "example"
+      token: "your-duckdns-token"
+      ip: ""
+  - name: noip
+    url: "https://dynupdate.no-ip.com/nic/update"
+    params:
+      hostname: "example.ddns.net"
+      username: "your-noip-username"
+      password: "your-noip-password"
+      ip: ""
