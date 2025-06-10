@@ -13,3 +13,9 @@ Ein einfach konfigurierbarer DynDNS-Client als Docker-Container. Unterstützt di
 ### Docker-Image bauen
 ```bash
 docker build -t dyndns-client .
+
+docker run -e DYNDNS_URL="https://dein-dyndns-service/update" \
+           -e DYNDNS_USER="deinbenutzer" \
+           -e DYNDNS_PASS="deinpasswort" \
+           -e DYNDNS_HOSTNAME="deindomain.de" \
+           dyndns-client
