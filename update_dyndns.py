@@ -4,9 +4,15 @@ import requests
 import yaml
 
 def log(msg, level="INFO", section="MAIN"):
+    """
+    Gibt eine formatierte Log-Nachricht auf der Konsole aus.
+    """
     print(f"[{level}] {section} --> {msg}", flush=True)
 
 def get_public_ip(ip_service):
+    """
+    Holt die öffentliche IPv4-Adresse vom angegebenen Service.
+    """
     try:
         response = requests.get(ip_service, timeout=10)
         response.raise_for_status()
@@ -16,6 +22,9 @@ def get_public_ip(ip_service):
         return None
 
 def get_public_ipv6(ip_service="https://api64.ipify.org"):
+    """
+    Holt die öffentliche IPv6-Adresse vom angegebenen Service.
+    """
     try:
         response = requests.get(ip_service)
         response.raise_for_status()
@@ -25,6 +34,9 @@ def get_public_ipv6(ip_service="https://api64.ipify.org"):
         return None
 
 def get_cloudflare_zone_id(api_token, zone_name):
+    """
+    Holt die Zone-ID für eine Cloudflare-Zone anhand des Namens.
+    """
     url = f"https://api.cloudflare.com/client/v4/zones?name={zone_name}"
     headers = {"Authorization": f"Bearer {api_token}"}
     resp = requests.get(url, headers=headers)
@@ -34,6 +46,9 @@ def get_cloudflare_zone_id(api_token, zone_name):
     raise Exception(f"Zone-ID für {zone_name} nicht gefunden: {data}")
 
 def get_cloudflare_record_id(api_token, zone_id, record_name):
+    """
+    Holt die Record-ID für einen DNS-Record in einer Cloudflare-Zone.
+    """
     url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records?name={record_name}"
     headers = {"Authorization": f"Bearer {api_token}"}
     resp = requests.get(url, headers=headers)
@@ -43,6 +58,10 @@ def get_cloudflare_record_id(api_token, zone_id, record_name):
     raise Exception(f"DNS-Record-ID für {record_name} nicht gefunden: {data}")
 
 def update_cloudflare(provider, ip):
+    """
+    Aktualisiert einen A-Record bei Cloudflare, falls die IP sich geändert hat.
+    Gibt "updated", "nochg" oder False zurück.
+    """
     api_token = provider['api_token']
     zone = provider['zone']
     record_name = provider['record_name']
@@ -75,6 +94,11 @@ def update_cloudflare(provider, ip):
     return False
 
 def update_ipv64(provider, ip, ip6=None):
+    """
+    Aktualisiert einen Record bei ipv64.net.
+    Unterstützt IPv4 und IPv6.
+    Gibt "updated", "nochg" oder False zurück.
+    """
     url = provider['url']
     params = {}
     if 'domain' in provider:
@@ -114,6 +138,11 @@ def update_ipv64(provider, ip, ip6=None):
     return False
 
 def update_dyndns2(provider, ip, ip6=None):
+    """
+    Aktualisiert einen DynDNS2-kompatiblen Provider (z.B. DuckDNS, NoIP, Dynu).
+    Unterstützt IPv4 und IPv6.
+    Gibt "updated", "nochg" oder False zurück.
+    """
     url = provider['url']
     params = {}
     # Domain/Host/Hostname
@@ -171,6 +200,10 @@ def update_dyndns2(provider, ip, ip6=None):
         return False
 
 def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
+    """
+    Wählt anhand des Protokolls die passende Update-Funktion für den Provider.
+    Loggt das Ergebnis und gibt True (Update/nochg) oder False (Fehler) zurück.
+    """
     try:
         if provider.get("protocol") == "cloudflare":
             result = update_cloudflare(provider, ip)
@@ -207,6 +240,10 @@ def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
         return False
 
 def main():
+    """
+    Hauptfunktion: Lädt die Konfiguration, prüft regelmäßig die öffentliche IP (IPv4/IPv6),
+    aktualisiert alle Provider und reagiert auf Änderungen an der config.yaml.
+    """
     log("DynDNS Client startet...", section="MAIN")
     config_path = 'config.yaml'
     last_config_mtime = os.path.getmtime(config_path)
