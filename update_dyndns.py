@@ -199,6 +199,34 @@ def update_dyndns2(provider, ip, ip6=None):
         )
         return False
 
+def validate_config(config):
+    """
+    Prüft die config.yaml auf notwendige Felder und gibt Fehler mit Zeilenangabe aus.
+    Gibt True zurück, wenn alles passt, sonst False.
+    """
+    required_top = ["timer", "providers"]
+    for key in required_top:
+        if key not in config:
+            log(f"Fehlender Schlüssel '{key}' in config.yaml.", "ERROR")
+            return False
+    if not isinstance(config["providers"], list):
+        log("Das Feld 'providers' muss eine Liste sein.", "ERROR")
+        return False
+    for idx, provider in enumerate(config["providers"]):
+        if "protocol" not in provider:
+            log(f"Fehlendes Feld 'protocol' bei Provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
+            return False
+        if "url" not in provider and provider["protocol"] not in ("cloudflare",):
+            log(f"Fehlendes Feld 'url' bei Provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
+            return False
+        # Weitere Checks je nach protocol
+        if provider["protocol"] == "cloudflare":
+            for field in ("zone", "api_token", "record_name"):
+                if field not in provider:
+                    log(f"Fehlendes Feld '{field}' bei Cloudflare-Provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
+                    return False
+    return True
+
 def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
     """
     Wählt anhand des Protokolls die passende Update-Funktion für den Provider.
@@ -243,39 +271,45 @@ def main():
     """
     Hauptfunktion: Lädt die Konfiguration, prüft regelmäßig die öffentliche IP (IPv4/IPv6),
     aktualisiert alle Provider und reagiert auf Änderungen an der config.yaml.
+    Fehlerhafte Provider werden nach jedem Intervall erneut versucht.
     """
     log("DynDNS Client startet...", section="MAIN")
     config_path = 'config.yaml'
     last_config_mtime = os.path.getmtime(config_path)
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
+    if not validate_config(config):
+        log("Konfiguration ungültig. Programm wird beendet.", "ERROR")
+        return
     timer = config.get('timer', 300)
     ip_service = config.get('ip_service', 'https://api.ipify.org')
-    ip6_service = config.get('ip6_service', None)  # NEU: IPv6-Service auslesen
+    ip6_service = config.get('ip6_service', None)
     providers = config['providers']
 
     log(f"Teste Erreichbarkeit von ip_service: {ip_service}", section="MAIN")
-    test_ip = get_public_ip(ip_service)
-    test_ip6 = get_public_ipv6(ip6_service) if ip6_service else None  # NEU: IPv6 holen, falls konfiguriert
-    if not test_ip:
-        log("Programm wird beendet, da ip_service nicht erreichbar ist.", "ERROR")
+    test_ip = get_public_ip(ip_service) if ip_service else None
+    test_ip6 = get_public_ipv6(ip6_service) if ip6_service else None
+    if not test_ip and not test_ip6:
+        log("Programm wird beendet, da weder ip_service noch ip6_service erreichbar ist.", "ERROR")
         return
-    log(f"ip_service erreichbar. Öffentliche IP: {test_ip}", section="MAIN")
+    if test_ip:
+        log(f"ip_service erreichbar. Öffentliche IP: {test_ip}", section="MAIN")
     if test_ip6:
         log(f"ip6_service erreichbar. Öffentliche IPv6: {test_ip6}", section="MAIN")
 
     log("Starte Initial-Update-Durchlauf für alle Provider...", section="MAIN")
+    failed_providers = []
     for provider in providers:
         result = update_provider(provider, test_ip, test_ip6)
         section = provider.get('name', 'PROVIDER').upper()
         if result or result == "nochg":
-            # Erfolg oder kein Update nötig: kein Fehler loggen!
             log(f"Provider '{provider.get('name')}' initial erfolgreich geprüft.", "INFO", section=section)
         else:
             log(f"Provider '{provider.get('name')}' konnte initial nicht aktualisiert werden.", "ERROR", section=section)
+            failed_providers.append(provider)
 
     last_ip = test_ip
-    last_ip6 = test_ip6  # NEU: IPv6 merken
+    last_ip6 = test_ip6
     elapsed = 0
     check_interval = 2  # Sekunden, wie oft auf Config-Änderung geprüft wird
 
@@ -289,16 +323,21 @@ def main():
             log("Änderung an config.yaml erkannt. Lade neue Konfiguration und starte einen neuen Durchlauf.", section="MAIN")
             with open(config_path, 'r') as f:
                 config = yaml.safe_load(f)
+            if not validate_config(config):
+                log("Konfiguration ungültig nach Änderung. Warte auf nächste Änderung...", "ERROR")
+                continue
             timer = config.get('timer', 300)
             ip_service = config.get('ip_service', 'https://api.ipify.org')
-            ip6_service = config.get('ip6_service', None)  # NEU
+            ip6_service = config.get('ip6_service', None)
             providers = config['providers']
             last_config_mtime = current_mtime
-            current_ip = get_public_ip(ip_service)
-            current_ip6 = get_public_ipv6(ip6_service) if ip6_service else None  # NEU
-            log(f"Aktuelle öffentliche IP: {current_ip}", section="MAIN")
+            current_ip = get_public_ip(ip_service) if ip_service else None
+            current_ip6 = get_public_ipv6(ip6_service) if ip6_service else None
+            if current_ip:
+                log(f"Aktuelle öffentliche IP: {current_ip}", section="MAIN")
             if current_ip6:
                 log(f"Aktuelle öffentliche IPv6: {current_ip6}", section="MAIN")
+            failed_providers = []
             for provider in providers:
                 result = update_provider(provider, current_ip, current_ip6)
                 section = provider.get('name', 'PROVIDER').upper()
@@ -306,39 +345,50 @@ def main():
                     log(f"Provider '{provider.get('name')}' nach Config-Änderung erfolgreich geprüft.", "SUCCESS", section=section)
                 else:
                     log(f"Provider '{provider.get('name')}' konnte nach Config-Änderung nicht aktualisiert werden.", "ERROR", section=section)
+                    failed_providers.append(provider)
             last_ip = current_ip
-            last_ip6 = current_ip6  # NEU
-            elapsed = 0  # Timer zurücksetzen
+            last_ip6 = current_ip6
+            elapsed = 0
             log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
             continue
 
         # Timer-Update wie gehabt
         if elapsed >= timer:
-            current_ip = get_public_ip(ip_service)
-            current_ip6 = get_public_ipv6(ip6_service) if ip6_service else None  # NEU
-            log(f"Aktuelle öffentliche IP: {current_ip}", section="MAIN")
+            current_ip = get_public_ip(ip_service) if ip_service else None
+            current_ip6 = get_public_ipv6(ip6_service) if ip6_service else None
+            if current_ip:
+                log(f"Aktuelle öffentliche IP: {current_ip}", section="MAIN")
             if current_ip6:
                 log(f"Aktuelle öffentliche IPv6: {current_ip6}", section="MAIN")
-            if not current_ip:
-                log("Konnte öffentliche IP nicht ermitteln. Warte auf nächsten Versuch.", "ERROR", section="MAIN")
-            elif current_ip != last_ip or (ip6_service and current_ip6 != last_ip6):
-                log(f"Neue IP erkannt: {current_ip} (vorher: {last_ip}) – Update wird durchgeführt.", section="MAIN")
-                if ip6_service:
+            # Prüfe auf IP-Änderung oder Fehler-Provider
+            ip_changed = (current_ip != last_ip) if ip_service else False
+            ip6_changed = (current_ip6 != last_ip6) if ip6_service else False
+            if ip_changed or ip6_changed or failed_providers:
+                if ip_changed:
+                    log(f"Neue IP erkannt: {current_ip} (vorher: {last_ip}) – Update wird durchgeführt.", section="MAIN")
+                if ip6_changed:
                     log(f"Neue IPv6 erkannt: {current_ip6} (vorher: {last_ip6}) – Update wird durchgeführt.", section="MAIN")
+                # Prüfe alle Provider, aber Fehler-Provider immer erneut!
+                retry_providers = failed_providers.copy()
+                failed_providers = []
                 for provider in providers:
-                    result = update_provider(provider, current_ip, current_ip6)
-                    section = provider.get('name', 'PROVIDER').upper()
-                    if result or result == "nochg":
-                        log(f"Provider '{provider.get('name')}' erfolgreich geprüft.", "SUCCESS", section=section)
-                    else:
-                        log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section=section)
+                    # Wenn Provider in retry_providers oder IP geändert, erneut versuchen
+                    if provider in retry_providers or ip_changed or ip6_changed:
+                        result = update_provider(provider, current_ip, current_ip6)
+                        section = provider.get('name', 'PROVIDER').upper()
+                        if result or result == "nochg":
+                            log(f"Provider '{provider.get('name')}' erfolgreich geprüft.", "SUCCESS", section=section)
+                        else:
+                            log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section=section)
+                            failed_providers.append(provider)
                 last_ip = current_ip
-                last_ip6 = current_ip6  # NEU
+                last_ip6 = current_ip6
                 elapsed = 0
                 log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
             else:
-                log(f"IP unverändert ({current_ip}), kein Update notwendig.", section="MAIN")
-                if ip6_service:
+                if current_ip:
+                    log(f"IP unverändert ({current_ip}), kein Update notwendig.", section="MAIN")
+                if current_ip6:
                     log(f"IPv6 unverändert ({current_ip6}), kein Update notwendig.", section="MAIN")
                 elapsed = 0
                 log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
