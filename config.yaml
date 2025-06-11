@@ -1,5 +1,6 @@
 timer: 300  # Intervall in Sekunden
 ip_service: "https://api.ipify.org"
+ip6_service: "https://api64.ipify.org"
 providers:
   - name: duckdns
     protocol: dyndns2
