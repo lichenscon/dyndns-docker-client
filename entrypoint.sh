@@ -24,9 +24,9 @@ if [ -f "$CONFIG_FILE" ]; then
   OWNER_GID=$(stat -c "%g" "$CONFIG_FILE")
   if [ "$OWNER_UID" != "$CONTAINER_UID" ] || [ "$OWNER_GID" != "$CONTAINER_GID" ]; then
     echo "Passe Besitzer von $CONFIG_FILE auf UID $CONTAINER_UID und GID $CONTAINER_GID an..."
-    chown "$CONTAINER_UID:$CONTAINER_GID" "$CONFIG_FILE"
+    chown "$CONTAINER_UID:$CONTAINER_GID" "$CONFIG_FILE" 2>/dev/null || echo "WARNUNG: chown fehlgeschlagen (read-only?)"
   fi
-  chmod 644 "$CONFIG_FILE"
+  chmod 644 "$CONFIG_FILE" 2>/dev/null || echo "WARNUNG: chmod fehlgeschlagen (read-only?)"
 else
   echo "WARNUNG: $CONFIG_FILE existiert nicht!"
 fi

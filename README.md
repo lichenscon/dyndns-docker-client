@@ -34,8 +34,8 @@ docker pull alexfl1987/dyndns:latest-stable
 Starte den Container mit deiner eigenen Konfiguration:
 
 ```sh
-docker run -d \
-  --name dyndns-client \
+docker run -u 1000:1000 \ 
+  -d --name dyndns-client \
   -v $(pwd)/config/config.yaml:/app/config/config.yaml \
   alexfl1987/dyndns:latest-stable
 ```
@@ -54,7 +54,7 @@ services:
   dyndns-client:
     image: alexfl1987/dyndns:latest-stable
     container_name: dyndns-client
-    user: "1001:1001"   # Beispiel: als User mit UID 1001 und GID 1001 starten
+    user: "1000:1000"   # Beispiel: als User mit UID 1000 und GID 1000 starten
     volumes:
       - ./config:/app/config
     restart: unless-stopped
