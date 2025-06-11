@@ -54,6 +54,7 @@ services:
   dyndns-client:
     image: alexfl1987/dyndns:latest-stable
     container_name: dyndns-client
+    user: "1001:1001"   # Beispiel: als User mit UID 1001 und GID 1001 starten
     volumes:
       - ./config:/app/config
     restart: unless-stopped
