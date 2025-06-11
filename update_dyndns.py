@@ -324,6 +324,8 @@ def main():
     elapsed = 0
     check_interval = 2  # Sekunden, wie oft auf Config-Änderung geprüft wird
 
+    log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
+
     while True:
         time.sleep(check_interval)
         elapsed += check_interval
