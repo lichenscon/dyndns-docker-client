@@ -98,8 +98,10 @@ def update_ipv64(provider, ip, ip6=None):
     Aktualisiert einen Record bei ipv64.net.
     Unterstützt IPv4 und IPv6.
     Gibt "updated", "nochg" oder False zurück.
+    Die URL ist fest im Code hinterlegt.
     """
-    url = provider['url']
+    # Feste URL für ipv64.net
+    url = "https://ipv64.net/nic/update"
     params = {}
     if 'domain' in provider:
         params['domain'] = provider['domain']
@@ -205,6 +207,7 @@ def validate_config(config):
     Gibt True zurück, wenn alles passt, sonst False.
     """
     required_top = ["timer", "providers"]
+    allowed_protocols = ("cloudflare", "ipv64", "dyndns2")
     for key in required_top:
         if key not in config:
             log(f"Fehlender Schlüssel '{key}' in config.yaml.", "ERROR")
@@ -216,7 +219,15 @@ def validate_config(config):
         if "protocol" not in provider:
             log(f"Fehlendes Feld 'protocol' bei Provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
             return False
-        if "url" not in provider and provider["protocol"] not in ("cloudflare",):
+        if provider["protocol"] not in allowed_protocols:
+            log(
+                f"Ungültiges Feld 'protocol' ('{provider['protocol']}') bei Provider #{idx+1} ({provider.get('name','?')}) in config.yaml. "
+                f"Erlaubt: {', '.join(allowed_protocols)}.",
+                "ERROR"
+            )
+            return False
+        # Nur für cloudflare und dyndns2 ist url Pflicht, nicht für ipv64!
+        if "url" not in provider and provider["protocol"] not in ("cloudflare", "ipv64"):
             log(f"Fehlendes Feld 'url' bei Provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
             return False
         # Weitere Checks je nach protocol
