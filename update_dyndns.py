@@ -1,3 +1,4 @@
+import sys
 import os
 import time
 import requests
@@ -279,13 +280,11 @@ def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
         return False
 
 def main():
-    """
-    Hauptfunktion: Lädt die Konfiguration, prüft regelmäßig die öffentliche IP (IPv4/IPv6),
-    aktualisiert alle Provider und reagiert auf Änderungen an der config.yaml.
-    Fehlerhafte Provider werden nach jedem Intervall erneut versucht.
-    """
     log("DynDNS Client startet...", section="MAIN")
     config_path = 'config.yaml'
+    if not os.path.exists(config_path):
+        log("config.yaml nicht gefunden! Bitte eigene Konfiguration bereitstellen oder config.example.yaml kopieren.", "ERROR")
+        sys.exit(1)
     last_config_mtime = os.path.getmtime(config_path)
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)

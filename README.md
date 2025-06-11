@@ -183,12 +183,95 @@ docker logs -f dyndns-client
 ```
 
 
-## Hinweise
+## Schnellstart mit Docker
 
-- Die Felder `domain` und `hostname` sind je nach Provider unterschiedlich zu setzen.  
-  Prüfe die jeweilige API-Dokumentation deines DynDNS-Anbieters!
-- Das Projekt ist für den Dauerbetrieb als Docker-Container ausgelegt.
-- Die Logs geben detailliert Auskunft über alle Update-Vorgänge und Fehler.
+1. **Beispiel-Konfiguration kopieren:**
+
+   Kopiere die mitgelieferte Beispiel-Konfiguration und passe sie an:
+   ```sh
+   cp config.example.yaml config.yaml
+   # ...bearbeite config.yaml nach deinen Bedürfnissen...
+   ```
+
+2. **Docker-Image bauen:**
+   ```sh
+   docker build -t dyndns-client .
+   ```
+
+3. **Container starten (mit eigener config.yaml):**
+   ```sh
+   docker run -d \
+     --name dyndns-client \
+     -v $(pwd)/config.yaml:/app/config.yaml \
+     dyndns-client
+   ```
+
+   > **Hinweis:**  
+   > Wenn du keine eigene `config.yaml` mountest, wird die Standard-Config aus dem Image verwendet.  
+   > Existiert keine `config.yaml`, gibt der Container beim Start einen Fehler aus.
+
+---
+
+## Beispiel-Konfiguration
+
+Eine vollständige, auskommentierte Beispiel-Konfiguration findest du in der Datei  
+**`config.example.yaml`** im Repository.
+
+**Ausschnitt:**
+```yaml
+# Intervall in Sekunden für die IP-Prüfung (z.B. alle 5 Minuten)
+timer: 300
+
+# Service zum Abrufen der öffentlichen IPv4-Adresse
+ip_service: "https://api.ipify.org"
+
+# Service zum Abrufen der öffentlichen IPv6-Adresse (optional)
+# ip6_service: "https://api64.ipify.org"
+
+providers:
+#   - name: duckdns
+#     protocol: dyndns2
+#     url: "https://www.duckdns.org/update"
+#     token: "your-duckdns-token"
+#     domain: "example"
+
+#   - name: mein-cloudflare
+#     protocol: cloudflare
+#     zone: "deinedomain.tld"
+#     api_token: "dein_cloudflare_api_token"
+#     record_name: "sub.domain.tld"
+
+#   - name: mein-ipv64
+#     protocol: ipv64
+#     auth_method: "token"
+#     token: "dein_update_token"
+#     domain: "deinedomain.ipv64.net"
+```
+
+Weitere Beispiele und alle Optionen findest du direkt in der `config.example.yaml`.
+
+---
+
+## Hinweise zur Konfiguration
+
+- Für **dyndns2**-Provider ist das Feld `url` **Pflicht**!
+- Für **cloudflare** und **ipv64** ist die URL im Code fest hinterlegt, du musst sie **nicht** angeben.
+- Je nach Provider werden die Felder `domain`, `hostname` oder `host` benötigt.
+- `auth_method` kann `"token"`, `"basic"` oder `"bearer"` sein (je nach Provider/API).
+- IPv6 wird nur genutzt, wenn du `ip6_service` angibst und der Provider es unterstützt.
+
+---
+
+## Fehlerbehandlung
+
+- Existiert keine `config.yaml`, gibt der Container beim Start einen Fehler aus und beendet sich.
+- Fehlerhafte Konfigurationen werden beim Start und bei jeder Änderung erkannt und mit einer klaren Fehlermeldung im Log ausgegeben.
+
+---
+
+## Mehr Details
+
+Siehe die ausführlichen Kommentare in `config.example.yaml` und die weiteren Abschnitte in dieser README für alle Optionen und Beispiele.
 
 ---
 
