@@ -1,5 +1,80 @@
 # DynDNS Docker Client
 
+---
+
+## Docker: Build & Run
+
+### Offizielles Image von Docker Hub
+
+Du kannst direkt das aktuelle, stabile Image von Docker Hub verwenden:
+
+```sh
+docker pull alexfl1987/dyndns:latest-stable
+```
+
+Starte den Container mit deiner eigenen Konfiguration:
+
+```sh
+docker run -d \
+  --name dyndns-client \
+  -v $(pwd)/config.yaml:/app/config.yaml \
+  alexfl1987/dyndns:latest-stable
+```
+
+> **Hinweis:**  
+> Wenn du keine eigene `config.yaml` mountest, wird die Standard-Config aus dem Image verwendet.  
+> Existiert keine `config.yaml`, gibt der Container beim Start einen Fehler aus.
+
+---
+
+### Docker Compose Beispiel
+
+Lege eine Datei `docker-compose.yml` an:
+
+```yaml
+version: "3.8"
+services:
+  dyndns-client:
+    image: alexfl1987/dyndns:latest-stable
+    container_name: dyndns-client
+    volumes:
+      - ./config.yaml:/app/config.yaml
+    restart: unless-stopped
+```
+
+Starte mit:
+
+```sh
+docker compose up -d
+```
+
+---
+
+## Schnellstart mit Docker (lokal bauen)
+
+1. **Beispiel-Konfiguration kopieren:**
+
+   Kopiere die mitgelieferte Beispiel-Konfiguration und passe sie an:
+   ```sh
+   cp config.example.yaml config.yaml
+   # ...bearbeite config.yaml nach deinen Bedürfnissen...
+   ```
+
+2. **Docker-Image bauen:**
+   ```sh
+   docker build -t dyndns-client .
+   ```
+
+3. **Container starten (mit eigener config.yaml):**
+   ```sh
+   docker run -d \
+     --name dyndns-client \
+     -v $(pwd)/config.yaml:/app/config.yaml \
+     dyndns-client
+   ```
+
+---
+
 ## Übersicht
 
 Dieses Projekt ist ein flexibler DynDNS-Client für verschiedene Provider (z.B. Cloudflare, ipv64, DuckDNS, NoIP, Dynu) und läuft als Docker-Container.  
@@ -152,106 +227,6 @@ providers:
 **Wichtig:**  
 - Immer das Feld verwenden, das der jeweilige Provider laut seiner API-Dokumentation verlangt!
 - Dein Code ist so gebaut, dass er automatisch das richtige Feld (`hostname`, `domain`, `host`) erkennt und verwendet.
-
----
-
-## Docker: Build & Run
-
-### Offizielles Image von Docker Hub
-
-Du kannst direkt das aktuelle, stabile Image von Docker Hub verwenden:
-
-```sh
-docker pull alexfl1987/dyndns:latest-stable
-```
-
-Starte den Container mit deiner eigenen Konfiguration:
-
-```sh
-docker run -d \
-  --name dyndns-client \
-  -v $(pwd)/config.yaml:/app/config.yaml \
-  alexfl1987/dyndns:latest-stable
-```
-
-> **Hinweis:**  
-> Wenn du keine eigene `config.yaml` mountest, wird die Standard-Config aus dem Image verwendet.  
-> Existiert keine `config.yaml`, gibt der Container beim Start einen Fehler aus.
-
----
-
-## Schnellstart mit Docker (lokal bauen)
-
-1. **Beispiel-Konfiguration kopieren:**
-
-   Kopiere die mitgelieferte Beispiel-Konfiguration und passe sie an:
-   ```sh
-   cp config.example.yaml config.yaml
-   # ...bearbeite config.yaml nach deinen Bedürfnissen...
-   ```
-
-2. **Docker-Image bauen:**
-   ```sh
-   docker build -t dyndns-client .
-   ```
-
-3. **Container starten (mit eigener config.yaml):**
-   ```sh
-   docker run -d \
-     --name dyndns-client \
-     -v $(pwd)/config.yaml:/app/config.yaml \
-     dyndns-client
-   ```
-
----
-
-## Beispiel-Konfiguration
-
-Eine vollständige, auskommentierte Beispiel-Konfiguration findest du in der Datei  
-**`config.example.yaml`** im Repository.
-
-**Ausschnitt:**
-```yaml
-# Intervall in Sekunden für die IP-Prüfung (z.B. alle 5 Minuten)
-timer: 300
-
-# Service zum Abrufen der öffentlichen IPv4-Adresse
-ip_service: "https://api.ipify.org"
-
-# Service zum Abrufen der öffentlichen IPv6-Adresse (optional)
-# ip6_service: "https://api64.ipify.org"
-
-providers:
-#   - name: duckdns
-#     protocol: dyndns2
-#     url: "https://www.duckdns.org/update"
-#     token: "your-duckdns-token"
-#     domain: "example"
-
-#   - name: mein-cloudflare
-#     protocol: cloudflare
-#     zone: "deinedomain.tld"
-#     api_token: "dein_cloudflare_api_token"
-#     record_name: "sub.domain.tld"
-
-#   - name: mein-ipv64
-#     protocol: ipv64
-#     auth_method: "token"
-#     token: "dein_update_token"
-#     domain: "deinedomain.ipv64.net"
-```
-
-Weitere Beispiele und alle Optionen findest du direkt in der `config.example.yaml`.
-
----
-
-## Hinweise zur Konfiguration
-
-- Für **dyndns2**-Provider ist das Feld `url` **Pflicht**!
-- Für **cloudflare** und **ipv64** ist die URL im Code fest hinterlegt, du musst sie **nicht** angeben.
-- Je nach Provider werden die Felder `domain`, `hostname` oder `host` benötigt.
-- `auth_method` kann `"token"`, `"basic"` oder `"bearer"` sein (je nach Provider/API).
-- IPv6 wird nur genutzt, wenn du `ip6_service` angibst und der Provider es unterstützt.
 
 ---
 
