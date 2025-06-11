@@ -313,9 +313,8 @@ def main():
     for provider in providers:
         result = update_provider(provider, test_ip, test_ip6)
         section = provider.get('name', 'PROVIDER').upper()
-        if result or result == "nochg":
-            log(f"Provider '{provider.get('name')}' initial erfolgreich geprüft.", "INFO", section=section)
-        else:
+        # Entfernt: Initial erfolgreich geprüft-Log
+        if not (result or result == "nochg"):
             log(f"Provider '{provider.get('name')}' konnte initial nicht aktualisiert werden.", "ERROR", section=section)
             failed_providers.append(provider)
 
@@ -354,9 +353,8 @@ def main():
             for provider in providers:
                 result = update_provider(provider, current_ip, current_ip6)
                 section = provider.get('name', 'PROVIDER').upper()
-                if result or result == "nochg":
-                    log(f"Provider '{provider.get('name')}' nach Config-Änderung erfolgreich geprüft.", "SUCCESS", section=section)
-                else:
+                # Entfernt: nach Config-Änderung erfolgreich geprüft-Log
+                if not (result or result == "nochg"):
                     log(f"Provider '{provider.get('name')}' konnte nach Config-Änderung nicht aktualisiert werden.", "ERROR", section=section)
                     failed_providers.append(provider)
             last_ip = current_ip
@@ -389,10 +387,8 @@ def main():
                     if provider in retry_providers or ip_changed or ip6_changed:
                         result = update_provider(provider, current_ip, current_ip6)
                         section = provider.get('name', 'PROVIDER').upper()
-                        if result or result == "nochg":
-                            log(f"Provider '{provider.get('name')}' erfolgreich geprüft.", "SUCCESS", section=section)
-                        else:
-                            log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section=section)
+                        # Entfernt: doppeltes Fehler-Log
+                        if not (result or result == "nochg"):
                             failed_providers.append(provider)
                 last_ip = current_ip
                 last_ip6 = current_ip6
