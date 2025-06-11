@@ -11,7 +11,7 @@ ip_service: "https://api.ipify.org"
 # ip6_service: "https://api64.ipify.org"
 
 # Liste der zu aktualisierenden Provider
-providers:
+providers: 
 # ACHTUNG: Dieses Feld darf NICHT entfernt oder auskommentiert werden!
 # Trage hier deine Provider ein, siehe Beispiele unten.
 

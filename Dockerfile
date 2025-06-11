@@ -4,7 +4,10 @@ WORKDIR /app
 RUN mkdir -p /app/config
 COPY update_dyndns.py /app/update_dyndns.py
 COPY config.example.yaml /app/config.example.yaml
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-RUN pip install requests pyyaml
-ENTRYPOINT ["/app/entrypoint.sh"]
+COPY config.example.JSON /app/config/config.JSON
+
+# Installiere benötigte Python-Module
+RUN pip install --no-cache-dir requests pyyaml
+
+# Standard-Startbefehl (ohne entrypoint.sh)
+CMD ["python", "/app/update_dyndns.py"]
