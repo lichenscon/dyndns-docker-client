@@ -49,7 +49,7 @@ providers:
 
   - name: mein-ipv64
     protocol: ipv64
-    url: "https://ipv64.net/nic/update"
+    # url ist NICHT nötig für ipv64, wird im Code fest gesetzt!
     auth_method: "token"
     token: "dein_update_token"
     domain: "deinedomain.ipv64.net"  # ipv64 erwartet 'domain'
@@ -79,15 +79,16 @@ providers:
   - `zone`: Deine Domain (z.B. `example.com`)
   - `api_token`: Cloudflare API-Token mit DNS-Rechten
   - `record_name`: Der zu aktualisierende DNS-Record (z.B. `sub.domain.tld`)
+  - **Hinweis:** Die URL ist im Code fest hinterlegt, du musst sie NICHT angeben!
 
 - **ipv64:**  
-  - `url`: Update-URL
   - `auth_method`: `"token"`, `"basic"` oder `"bearer"`
   - `token`: Dein Update-Token
   - `domain`: Deine Domain bei ipv64.net
+  - **Hinweis:** Die URL ist im Code fest hinterlegt, du musst sie NICHT angeben!
 
 - **DynDNS2-kompatible Provider (DuckDNS, NoIP, Dynu, etc.):**  
-  - `url`: Update-URL
+  - `url`: Update-URL (Pflicht!)
   - `auth_method`: Optional, z.B. `"basic"` für Dynu
   - `username`, `password`, `token`: Zugangsdaten je nach Provider
   - **domain** oder **hostname**:  
@@ -207,4 +208,25 @@ Pull Requests und Verbesserungen sind willkommen!
 Bei Fragen oder Problemen bitte ein Issue auf GitHub eröffnen.
 
 ---
+
+### Nur IPv4, nur IPv6 oder beides aktualisieren
+
+Du kannst steuern, ob nur IPv4, nur IPv6 oder beide Adressen aktualisiert werden:
+
+- **Nur IPv4:**  
+  ```yaml
+  ip_service: "https://api.ipify.org"
+  ```
+- **Nur IPv6:**  
+  ```yaml
+  ip6_service: "https://api64.ipify.org"
+  ```
+- **Beides:**  
+  ```yaml
+  ip_service: "https://api.ipify.org"
+  ip6_service: "https://api64.ipify.org"
+  ```
+
+Wenn du einen der beiden Einträge weglässt, wird nur die jeweils angegebene Adresse aktualisiert.  
+**Hinweis:** Nicht alle Provider unterstützen IPv6!
 

@@ -23,7 +23,7 @@ providers:
 
   - name: mein-ipv64
     protocol: ipv64
-    url: "https://ipv64.net/nic/update"
+    # url ist NICHT nötig für ipv64, wird im Code fest gesetzt!
     auth_method: "token"
     token: "dein_update_token"
     domain: "deinedomain.ipv64.net"
