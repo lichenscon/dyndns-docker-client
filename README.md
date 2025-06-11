@@ -181,18 +181,6 @@ docker run -d \
 docker logs -f dyndns-client
 ```
 
----
-
-## Erweiterungsmöglichkeiten
-
-- **IPv6-Unterstützung:**  
-  Ergänze in der Konfiguration und im Code einen IPv6-Service (z.B. `https://api64.ipify.org`) und übergib die Adresse an die Provider, die AAAA-Records unterstützen.
-- **Weitere Provider:**  
-  Neue Provider können einfach durch Hinzufügen eines neuen Blocks mit entsprechendem `protocol` ergänzt werden.
-- **Automatisches Reload:**  
-  Änderungen an der `config.yaml` werden automatisch erkannt und angewendet, ohne den Container neu zu starten.
-
----
 
 ## Hinweise
 
