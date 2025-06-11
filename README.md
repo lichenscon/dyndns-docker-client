@@ -157,33 +157,30 @@ providers:
 
 ## Docker: Build & Run
 
-### 1. **Builden des Containers**
+### Offizielles Image von Docker Hub
 
-Im Projektverzeichnis:
+Du kannst direkt das aktuelle, stabile Image von Docker Hub verwenden:
 
 ```sh
-docker build -t dyndns-client .
+docker pull alexfl1987/dyndns:latest-stable
 ```
 
-### 2. **Starten des Containers**
+Starte den Container mit deiner eigenen Konfiguration:
 
 ```sh
 docker run -d \
   --name dyndns-client \
   -v $(pwd)/config.yaml:/app/config.yaml \
-  dyndns-client
+  alexfl1987/dyndns:latest-stable
 ```
 
-- Das Volume-Mapping sorgt dafür, dass Änderungen an deiner lokalen `config.yaml` sofort im Container übernommen werden.
+> **Hinweis:**  
+> Wenn du keine eigene `config.yaml` mountest, wird die Standard-Config aus dem Image verwendet.  
+> Existiert keine `config.yaml`, gibt der Container beim Start einen Fehler aus.
 
-### 3. **Logs anzeigen**
+---
 
-```sh
-docker logs -f dyndns-client
-```
-
-
-## Schnellstart mit Docker
+## Schnellstart mit Docker (lokal bauen)
 
 1. **Beispiel-Konfiguration kopieren:**
 
@@ -205,10 +202,6 @@ docker logs -f dyndns-client
      -v $(pwd)/config.yaml:/app/config.yaml \
      dyndns-client
    ```
-
-   > **Hinweis:**  
-   > Wenn du keine eigene `config.yaml` mountest, wird die Standard-Config aus dem Image verwendet.  
-   > Existiert keine `config.yaml`, gibt der Container beim Start einen Fehler aus.
 
 ---
 
