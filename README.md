@@ -35,7 +35,6 @@ docker run -d \
 ```
 
 > **Hinweis:**  
-> Wenn du keine eigene `config.yaml` mountest, wird die Standard-Config aus dem Image verwendet.  
 > Existiert keine `config.yaml`, gibt der Container beim Start einen Fehler aus.
 
 ---
