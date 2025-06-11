@@ -50,7 +50,7 @@ services:
     image: alexfl1987/dyndns:latest-stable
     container_name: dyndns-client
     volumes:
-      - ./config.yaml:/app/config.yaml
+      - ./config:/app/config
     restart: unless-stopped
 ```
 
@@ -59,6 +59,9 @@ Starte mit:
 ```sh
 docker compose up -d
 ```
+
+> **Hinweis:**  
+> Lege deine config.yaml im lokalen ./config-Verzeichnis ab!
 
 ---
 

@@ -281,13 +281,15 @@ def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
 
 def main():
     log("DynDNS Client startet...", section="MAIN")
-    config_path = 'config.yaml'
+    config_path = 'config/config.yaml'
     if not os.path.exists(config_path):
         log(
-            "config.yaml nicht gefunden! Bitte eigene Konfiguration bereitstellen oder config.example.yaml kopieren.\n"
+            "config/config.yaml nicht gefunden! Bitte eigene Konfiguration bereitstellen oder config.example.yaml kopieren.\n"
             "Siehe Anleitung im Repository: https://github.com/alex-1987/dyndns-docker-client\n"
-            "Beispiel für Docker:\n"
-            "  docker run -v $(pwd)/config.yaml:/app/config.yaml alexfl1987/dyndns:latest-stable",
+            "Beispiel für Docker Compose:\n"
+            "  volumes:\n"
+            "    - ./config:/app/config\n"
+            "und lege deine config.yaml in das Verzeichnis ./config auf dem Host.",
             "ERROR"
         )
         sys.exit(1)
@@ -302,6 +304,13 @@ def main():
         log(
             "config.yaml ist leer oder ungültig! Bitte prüfe die Datei und orientiere dich an config.example.yaml.\n"
             "Siehe Anleitung im Repository: https://github.com/alex-1987/dyndns-docker-client",
+            "ERROR"
+        )
+        sys.exit(1)
+    if "providers" not in config or not isinstance(config["providers"], list) or not config["providers"]:
+        log(
+            "config.yaml enthält keine Provider! Bitte trage mindestens einen Provider unter 'providers:' ein.\n"
+            "Siehe Anleitung und Beispiele im Repository: https://github.com/alex-1987/dyndns-docker-client",
             "ERROR"
         )
         sys.exit(1)
