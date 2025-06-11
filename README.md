@@ -1,6 +1,12 @@
 # DynDNS Docker Client
 ---
 
+## **WICHTIG:**
+**Lege im Ordner `config` auf deinem Host eine Datei mit dem Namen `config.yaml` an!**  
+Der Inhalt sollte sich an der mitgelieferten `config.example.yaml` orientieren.  
+Ohne diese Datei startet der Container nicht korrekt.
+
+---
 ## Hinweis zur Entstehung
 
 Dieses Projekt wurde mit Unterstützung von **GitHub Copilot** erstellt.  
@@ -30,12 +36,12 @@ Starte den Container mit deiner eigenen Konfiguration:
 ```sh
 docker run -d \
   --name dyndns-client \
-  -v $(pwd)/config.yaml:/app/config.yaml \
+  -v $(pwd)/config/config.yaml:/app/config/config.yaml \
   alexfl1987/dyndns:latest-stable
 ```
 
 > **Hinweis:**  
-> Existiert keine `config.yaml`, gibt der Container beim Start einen Fehler aus.
+> Existiert keine `config/config.yaml`, gibt der Container beim Start einen Fehler aus.
 
 ---
 
@@ -44,7 +50,6 @@ docker run -d \
 Lege eine Datei `docker-compose.yml` an:
 
 ```yaml
-version: "3.8"
 services:
   dyndns-client:
     image: alexfl1987/dyndns:latest-stable
@@ -61,7 +66,9 @@ docker compose up -d
 ```
 
 > **Hinweis:**  
-> Lege deine config.yaml im lokalen ./config-Verzeichnis ab!
+> **Lege deine `config.yaml` im lokalen `./config`-Verzeichnis ab!**
+> Ohne diese Datei startet der Container nicht korrekt.
+> Der Inhalt sollte sich an `config.example.yaml` orientieren.
 
 ---
 
@@ -71,8 +78,9 @@ docker compose up -d
 
    Kopiere die mitgelieferte Beispiel-Konfiguration und passe sie an:
    ```sh
-   cp config.example.yaml config.yaml
-   # ...bearbeite config.yaml nach deinen Bedürfnissen...
+   mkdir -p config
+   cp config.example.yaml config/config.yaml
+   # ...bearbeite config/config.yaml nach deinen Bedürfnissen...
    ```
 
 2. **Docker-Image bauen:**
@@ -84,7 +92,7 @@ docker compose up -d
    ```sh
    docker run -d \
      --name dyndns-client \
-     -v $(pwd)/config.yaml:/app/config.yaml \
+     -v $(pwd)/config:/app/config \
      dyndns-client
    ```
 
@@ -107,9 +115,13 @@ Es unterstützt IPv4 und optional IPv6, prüft regelmäßig die öffentliche IP 
 
 ---
 
-## Konfiguration (`config.yaml`)
+## Konfiguration (`config/config.yaml`)
 
-Die Datei `config.yaml` steuert das Verhalten des Containers.  
+**WICHTIG:**  
+**Lege im Ordner `config` eine Datei `config.yaml` an!**  
+Der Inhalt sollte sich an der mitgelieferten `config.example.yaml` orientieren.
+
+Die Datei `config/config.yaml` steuert das Verhalten des Containers.  
 **Beispiel:**
 
 ```yaml
@@ -117,40 +129,42 @@ timer: 300  # Intervall in Sekunden für die IP-Prüfung
 ip_service: "https://api.ipify.org"  # Service zum Abrufen der öffentlichen IPv4
 ip6_service: "https://api64.ipify.org"  # (Optional) Service zum Abrufen der öffentlichen IPv6
 
-providers:
-  - name: duckdns
-    protocol: dyndns2
-    url: "https://www.duckdns.org/update"
-    token: "your-duckdns-token"
-    domain: "example"  # DuckDNS erwartet 'domain'
+providers: []
+# ACHTUNG: Dieses Feld darf NICHT entfernt oder auskommentiert werden!
+# Trage hier deine Provider ein, siehe Beispiele in config.example.yaml
 
-  - name: noip-home
-    protocol: dyndns2
-    url: "https://dynupdate.no-ip.com/nic/update"
-    username: "your-noip-username"
-    password: "your-noip-password"
-    hostname: "example.ddns.net"  # NoIP erwartet 'hostname'
+#   - name: duckdns
+#     protocol: dyndns2
+#     url: "https://www.duckdns.org/update"
+#     token: "your-duckdns-token"
+#     domain: "example"  # DuckDNS erwartet 'domain'
 
-  - name: mein-cloudflare
-    protocol: cloudflare
-    zone: "deinedomain.tld"
-    api_token: "dein_cloudflare_api_token"
-    record_name: "sub.domain.tld"
+#   - name: noip-home
+#     protocol: dyndns2
+#     url: "https://dynupdate.no-ip.com/nic/update"
+#     username: "your-noip-username"
+#     password: "your-noip-password"
+#     hostname: "example.ddns.net"  # NoIP erwartet 'hostname'
 
-  - name: mein-ipv64
-    protocol: ipv64
-    # url ist NICHT nötig für ipv64, wird im Code fest gesetzt!
-    auth_method: "token"
-    token: "dein_update_token"
-    domain: "deinedomain.ipv64.net"  # ipv64 erwartet 'domain'
+#   - name: mein-cloudflare
+#     protocol: cloudflare
+#     zone: "deinedomain.tld"
+#     api_token: "dein_cloudflare_api_token"
+#     record_name: "sub.domain.tld"
 
-  - name: dynu
-    protocol: dyndns2
-    url: "https://api.dynu.com/nic/update"
-    auth_method: "basic"
-    username: "deinuser"
-    password: "deinpass"
-    hostname: "deinedomain.dynu.net"  # Dynu erwartet 'hostname'
+#   - name: mein-ipv64
+#     protocol: ipv64
+#     auth_method: "token"
+#     token: "dein_update_token"
+#     domain: "deinedomain.ipv64.net"  # ipv64 erwartet 'domain'
+
+#   - name: dynu
+#     protocol: dyndns2
+#     url: "https://api.dynu.com/nic/update"
+#     auth_method: "basic"
+#     username: "deinuser"
+#     password: "deinpass"
+#     hostname: "deinedomain.dynu.net"  # Dynu erwartet 'hostname'
 ```
 
 ### Hinweise zur Konfiguration
@@ -247,7 +261,7 @@ providers:
 
 ## Fehlerbehandlung
 
-- Existiert keine `config.yaml`, gibt der Container beim Start einen Fehler aus und beendet sich.
+- Existiert keine `config/config.yaml`, gibt der Container beim Start einen Fehler aus und beendet sich.
 - Fehlerhafte Konfigurationen werden beim Start und bei jeder Änderung erkannt und mit einer klaren Fehlermeldung im Log ausgegeben.
 
 ---
