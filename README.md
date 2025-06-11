@@ -1,151 +1,161 @@
 # DynDNS Docker Client
 
-Ein flexibler DynDNS-Updater für mehrere Provider, konfigurierbar über eine YAML-Datei. Unterstützt verschiedene Authentifizierungsarten und Protokolle (z.B. DynDNS2, Cloudflare, DuckDNS, No-IP, ipv64.net).
+## Übersicht
+
+Dieses Projekt ist ein flexibler DynDNS-Client für verschiedene Provider (z.B. Cloudflare, ipv64, DuckDNS, NoIP, Dynu) und läuft als Docker-Container.  
+Es unterstützt IPv4 und optional IPv6, prüft regelmäßig die öffentliche IP und aktualisiert die DNS-Einträge bei den konfigurierten Diensten.
 
 ---
 
 ## Features
 
-- **Mehrere Provider gleichzeitig** (DuckDNS, No-IP, Cloudflare, ipv64.net, beliebige DynDNS2-Provider)
-- **Konfiguration über eine YAML-Datei**
-- **Automatische Erkennung von IP-Änderungen** (IPv4, optional IPv6)
-- **Flexible Authentifizierung:** Basic Auth, Token als Query, Bearer Token
-- **Automatische Cloudflare-ID-Ermittlung** (nur Angabe von Zone und Record Name nötig)
-- **Live-Reload:** Änderungen an der config.yaml werden sofort erkannt und angewendet
-- **Ausführliches Logging** im Docker-Log
+- **Mehrere Provider:** Unterstützt Cloudflare, ipv64, DuckDNS, NoIP, Dynu und andere DynDNS2-kompatible Dienste.
+- **IPv4 & IPv6:** Aktualisiert A- und AAAA-Records, wenn gewünscht.
+- **Automatisches Nachladen:** Änderungen an der `config.yaml` werden automatisch erkannt und übernommen.
+- **Flexible Konfiguration:** Jeder Provider kann beliebig benannt werden, der Typ wird über das Feld `protocol` gesteuert.
+- **Detailliertes Logging:** Zeigt an, ob ein Update durchgeführt wurde, nicht nötig war oder ein Fehler auftrat.
 
 ---
 
 ## Konfiguration (`config.yaml`)
 
 Die Datei `config.yaml` steuert das Verhalten des Containers.  
-Beispiel:
+**Beispiel:**
 
 ```yaml
 timer: 300  # Intervall in Sekunden für die IP-Prüfung
-ip_service: "https://api.ipify.org"  # Service zum Abrufen der öffentlichen IP
+ip_service: "https://api.ipify.org"  # Service zum Abrufen der öffentlichen IPv4
 
 providers:
   - name: duckdns
+    protocol: dyndns2
     url: "https://www.duckdns.org/update"
-    params:
-      domains: "example"
-      token: "your-duckdns-token"
+    token: "your-duckdns-token"
+    domain: "example"
 
-  - name: noip
+  - name: noip-home
+    protocol: dyndns2
     url: "https://dynupdate.no-ip.com/nic/update"
-    params:
-      hostname: "example.ddns.net"
-      username: "your-noip-username"
-      password: "your-noip-password"
+    username: "your-noip-username"
+    password: "your-noip-password"
+    hostname: "example.ddns.net"
 
-  - name: cloudflare
-    zone: "deinedomain.tld"              # Deine Domain (z.B. example.com)
+  - name: mein-cloudflare
+    protocol: cloudflare
+    zone: "deinedomain.tld"
     api_token: "dein_cloudflare_api_token"
-    record_name: "sub.domain.tld"        # Der zu aktualisierende DNS-Record
+    record_name: "sub.domain.tld"
 
-  - name: ipv64
+  - name: mein-ipv64
+    protocol: ipv64
     url: "https://ipv64.net/nic/update"
-    auth_method: "token"                 # "token", "basic", "bearer"
+    auth_method: "token"
     token: "dein_update_token"
     domain: "deinedomain.ipv64.net"
 
-  - name: custom-dyndns2
-    url: "https://example.com/nic/update"
-    protocol: "dyndns2"
-    auth_method: "basic"                 # "token", "basic", "bearer"
-    username: "deinuser"                 # oder Token
-    password: "deinpass"                 # oder Token
-    domain: "deinedomain.example.com"
+  - name: dynu
+    protocol: dyndns2
+    url: "https://api.dynu.com/nic/update"
+    auth_method: "basic"
+    username: "deinuser"
+    password: "deinpass"
+    hostname: "deinedomain.dynu.net"
 ```
 
-**Hinweise zur Konfiguration:**
+### Hinweise zur Konfiguration
 
 - **timer:** Wie oft (in Sekunden) die IP geprüft und ggf. ein Update durchgeführt wird.
-- **ip_service:** URL eines Dienstes, der die aktuelle öffentliche IP zurückliefert.
+- **ip_service:** URL eines Dienstes, der die aktuelle öffentliche IPv4 zurückliefert (z.B. [ipify.org](https://www.ipify.org/)).
 - **providers:** Liste der zu aktualisierenden Dienste. Jeder Eintrag beschreibt einen Provider.
+- **protocol:** Muss einer der folgenden Werte sein: `cloudflare`, `ipv64`, `dyndns2`.
+- **IPv6:**  
+  Um IPv6 zu nutzen, kann ein zusätzlicher Service wie `https://api64.ipify.org` abgefragt und als `ip6` an die Update-Funktionen übergeben werden.  
+  (Die Implementierung muss ggf. im Code ergänzt werden.)
 
-### Authentifizierungsmöglichkeiten für DynDNS2-Provider
+#### Provider-spezifische Felder
 
-- **Basic Auth:**  
-  ```yaml
-  auth_method: "basic"
-  username: "deinuser"   # oder Token
-  password: "deinpass"   # oder Token
-  ```
-- **Token als Query-Parameter:**  
-  ```yaml
-  auth_method: "token"
-  token: "deintoken"
-  ```
-- **Bearer Token:**  
-  ```yaml
-  auth_method: "bearer"
-  token: "deintoken"
-  ```
+- **Cloudflare:**  
+  - `zone`: Deine Domain (z.B. `example.com`)
+  - `api_token`: Cloudflare API-Token mit DNS-Rechten
+  - `record_name`: Der zu aktualisierende DNS-Record (z.B. `sub.domain.tld`)
 
-### Cloudflare
+- **ipv64:**  
+  - `url`: Update-URL
+  - `auth_method`: "token", "basic" oder "bearer"
+  - `token`: Dein Update-Token
+  - `domain`: Deine Domain bei ipv64.net
 
-- Es reicht, `zone`, `api_token` und `record_name` anzugeben.
-- Die Zone-ID und Record-ID werden automatisch per API ermittelt.
-- Der API-Token benötigt DNS-Edit-Rechte für die Zone.
+- **DynDNS2-kompatible Provider (DuckDNS, NoIP, Dynu, etc.):**  
+  - `url`: Update-URL
+  - `auth_method`: Optional, z.B. "basic" für Dynu
+  - `username`, `password`, `token`: Zugangsdaten je nach Provider
+  - `hostname` oder `domain`: Je nach Provider (siehe deren API-Doku)
 
 ---
 
-## Nutzung mit Docker
+## Docker: Build & Run
+
+### 1. **Builden des Containers**
+
+Im Projektverzeichnis:
 
 ```sh
 docker build -t dyndns-client .
-docker run --rm -v $(pwd)/config.yaml:/app/config.yaml dyndns-client
 ```
 
-## Nutzung mit Docker Compose
-
-Erstelle eine `docker-compose.yml`:
-
-```yaml
-version: "3.8"
-services:
-  dyndns:
-    build: .
-    container_name: dyndns-client
-    restart: unless-stopped
-    volumes:
-      - ./config.yaml:/app/config.yaml:ro
-```
-
-Starte den Container mit:
+### 2. **Starten des Containers**
 
 ```sh
-docker compose up -d
+docker run -d \
+  --name dyndns-client \
+  -v $(pwd)/config.yaml:/app/config.yaml \
+  dyndns-client
+```
+
+- Das Volume-Mapping sorgt dafür, dass Änderungen an deiner lokalen `config.yaml` sofort im Container übernommen werden.
+
+### 3. **Logs anzeigen**
+
+```sh
+docker logs -f dyndns-client
 ```
 
 ---
 
-## Logging & Verhalten
+## Erweiterungsmöglichkeiten
 
-- **Alle Logs erscheinen im Docker-Log.**
-- Beim Start und nach jeder Änderung an der `config.yaml` wird die Konfiguration neu geladen und ein Update-Durchlauf gestartet.
-- Nach jedem Update-Durchlauf wird geloggt, wann der nächste Check erfolgt.
-- Es wird geloggt, ob ein Update erfolgreich war, die IP gleich geblieben ist oder ein Fehler aufgetreten ist.
-- Updatelimits (z.B. bei ipv64.net) werden erkannt und als Fehler geloggt.
-
----
-
-## Abhängigkeiten
-
-- Python 3.11
-- requests
-- pyyaml
-
-Diese werden automatisch im Docker-Image installiert.
+- **IPv6-Unterstützung:**  
+  Ergänze in der Konfiguration und im Code einen IPv6-Service (z.B. `https://api64.ipify.org`) und übergib die Adresse an die Provider, die AAAA-Records unterstützen.
+- **Weitere Provider:**  
+  Neue Provider können einfach durch Hinzufügen eines neuen Blocks mit entsprechendem `protocol` ergänzt werden.
+- **Automatisches Reload:**  
+  Änderungen an der `config.yaml` werden automatisch erkannt und angewendet, ohne den Container neu zu starten.
 
 ---
 
 ## Hinweise
 
-- Die Datei `config.yaml` kann jederzeit geändert werden – der Container erkennt das automatisch.
-- Für Provider mit DynDNS2-Protokoll kann die Authentifizierung flexibel gewählt werden.
-- Die IP wird immer über den in der Config angegebenen Service ermittelt.
-- IPv6-Unterstützung ist optional und kann bei Bedarf ergänzt werden.
+- Die Felder `domain` und `hostname` sind je nach Provider unterschiedlich zu setzen.  
+  Prüfe die jeweilige API-Dokumentation deines DynDNS-Anbieters!
+- Das Projekt ist für den Dauerbetrieb als Docker-Container ausgelegt.
+- Die Logs geben detailliert Auskunft über alle Update-Vorgänge und Fehler.
+
+---
+
+## Beispiel für IPv6 (optional)
+
+```yaml
+ip_service: "https://api.ipify.org"
+ip6_service: "https://api64.ipify.org"
+```
+Im Code kannst du dann analog zu `get_public_ip` auch `get_public_ipv6` verwenden und an die Provider übergeben, die IPv6 unterstützen.
+
+---
+
+## Support & Mitmachen
+
+Pull Requests und Verbesserungen sind willkommen!  
+Bei Fragen oder Problemen bitte ein Issue auf GitHub eröffnen.
+
+---
 

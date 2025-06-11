@@ -172,7 +172,7 @@ def update_dyndns2(provider, ip, ip6=None):
 
 def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
     try:
-        if provider.get("name") == "cloudflare":
+        if provider.get("protocol") == "cloudflare":
             result = update_cloudflare(provider, ip)
             if result == "updated":
                 log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="CLOUDFLARE")
@@ -182,7 +182,7 @@ def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
             else:
                 log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section="CLOUDFLARE")
             return result == "updated" or (log_success_if_nochg and result == "nochg")
-        if provider.get("name") == "ipv64":
+        if provider.get("protocol") == "ipv64":
             result = update_ipv64(provider, ip, ip6)
             if result == "updated":
                 log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="IPV64")
@@ -202,27 +202,6 @@ def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
             else:
                 log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section="DYNDNS2")
             return result == "updated" or (log_success_if_nochg and result == "nochg")
-        # Standard-Provider-Logik
-        url = provider['url']
-        params = provider.get('params', {}).copy()
-        params['ip'] = ip
-        auth = None
-        if 'username' in params and 'password' in params:
-            auth = (params.pop('username'), params.pop('password'))
-        response = requests.get(url, params=params, auth=auth)
-        resp_text = response.text.lower().strip()
-        section = provider.get('name', 'PROVIDER').upper()
-        log(f"{provider.get('name', 'provider')} response: {response.text}", section=section)
-        if "nochg" in resp_text or "no change" in resp_text:
-            if log_success_if_nochg:
-                log(f"Provider '{provider.get('name')}' war bereits aktuell, kein Update durchgeführt.", "INFO", section=section)
-            return log_success_if_nochg
-        elif "good" in resp_text or "success" in resp_text:
-            log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section=section)
-            return True
-        else:
-            log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section=section)
-            return False
     except Exception as e:
         log(f"Update für Provider '{provider.get('name')}' fehlgeschlagen: {e}", "ERROR", section=provider.get("name", "PROVIDER").upper())
         return False
@@ -250,7 +229,7 @@ def main():
         section = provider.get('name', 'PROVIDER').upper()
         if result or result == "nochg":
             # Erfolg oder kein Update nötig: kein Fehler loggen!
-            log(f"Provider '{provider.get('name')}' initial erfolgreich geprüft.", "SUCCESS", section=section)
+            log(f"Provider '{provider.get('name')}' initial erfolgreich geprüft.", "INFO", section=section)
         else:
             log(f"Provider '{provider.get('name')}' konnte initial nicht aktualisiert werden.", "ERROR", section=section)
 
