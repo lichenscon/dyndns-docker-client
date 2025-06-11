@@ -283,14 +283,31 @@ def main():
     log("DynDNS Client startet...", section="MAIN")
     config_path = 'config.yaml'
     if not os.path.exists(config_path):
-        log("config.yaml nicht gefunden! Bitte eigene Konfiguration bereitstellen oder config.example.yaml kopieren.", "ERROR")
+        log(
+            "config.yaml nicht gefunden! Bitte eigene Konfiguration bereitstellen oder config.example.yaml kopieren.\n"
+            "Siehe Anleitung im Repository: https://github.com/alex-1987/dyndns-docker-client\n"
+            "Beispiel für Docker:\n"
+            "  docker run -v $(pwd)/config.yaml:/app/config.yaml alexfl1987/dyndns:latest-stable",
+            "ERROR"
+        )
         sys.exit(1)
     last_config_mtime = os.path.getmtime(config_path)
     with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)
+        try:
+            config = yaml.safe_load(f)
+        except Exception as e:
+            log(f"Fehler beim Laden der config.yaml: {e}\nSiehe Beispiel und Hinweise im Repository: https://github.com/alex-1987/dyndns-docker-client", "ERROR")
+            sys.exit(1)
+    if not config or not isinstance(config, dict):
+        log(
+            "config.yaml ist leer oder ungültig! Bitte prüfe die Datei und orientiere dich an config.example.yaml.\n"
+            "Siehe Anleitung im Repository: https://github.com/alex-1987/dyndns-docker-client",
+            "ERROR"
+        )
+        sys.exit(1)
     if not validate_config(config):
         log("Konfiguration ungültig. Programm wird beendet.", "ERROR")
-        return
+        sys.exit(1)
     timer = config.get('timer', 300)
     ip_service = config.get('ip_service', 'https://api.ipify.org')
     ip6_service = config.get('ip6_service', None)
