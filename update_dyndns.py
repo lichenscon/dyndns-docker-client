@@ -76,6 +76,7 @@ def update_cloudflare(provider, ip):
     }
     resp_get = requests.get(url_get, headers=headers)
     data = resp_get.json()
+    log(f"Cloudflare GET response: {data}", section="CLOUDFLARE")  # <--- Ergänzt
     if data.get("success") and data["result"]:
         current_content = data["result"]["content"]
         if current_content == ip:
@@ -89,7 +90,7 @@ def update_cloudflare(provider, ip):
         "content": ip
     }
     resp_patch = requests.patch(url_patch, json=data_patch, headers=headers)
-    log(f"cloudflare response: {resp_patch.text}", section="CLOUDFLARE")
+    log(f"Cloudflare PATCH response: {resp_patch.text}", section="CLOUDFLARE")  # <--- Ergänzt
     if resp_patch.ok:
         return "updated"
     return False
