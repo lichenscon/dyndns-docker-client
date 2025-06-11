@@ -1,6 +1,19 @@
 # DynDNS Docker Client
+---
+
+## Hinweis zur Entstehung
+
+Dieses Projekt wurde mit Unterstützung von **GitHub Copilot** erstellt.  
+Bei Fehlern oder Verbesserungsvorschlägen gerne ein Issue im Repository eröffnen!
 
 ---
+## Support & Mitmachen
+
+Pull Requests und Verbesserungen sind willkommen!  
+Bei Fragen oder Problemen bitte ein Issue auf GitHub eröffnen.
+
+---
+
 
 ## Docker: Build & Run
 
