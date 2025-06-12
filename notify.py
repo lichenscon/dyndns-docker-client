@@ -6,22 +6,32 @@ import os
 from email.mime.text import MIMEText
 
 def human_error_message(e, context=""):
+    """
+    Returns a human-readable error message for common network errors.
+    """
     err_str = str(e)
     if "[Errno -2]" in err_str:
-        return f"{context} fehlgeschlagen: Hostname nicht gefunden (DNS-Problem oder Tippfehler im Servernamen)."
+        return f"{context} failed: Hostname not found (DNS issue or typo in server name)."
     elif "[Errno 111]" in err_str:
-        return f"{context} fehlgeschlagen: Verbindung abgelehnt (Server nicht erreichbar oder falscher Port)."
+        return f"{context} failed: Connection refused (server not reachable or wrong port)."
     elif "[Errno 110]" in err_str:
-        return f"{context} fehlgeschlagen: Timeout beim Verbindungsaufbau."
+        return f"{context} failed: Timeout while connecting."
     elif "Name or service not known" in err_str:
-        return f"{context} fehlgeschlagen: Hostname nicht gefunden (DNS-Problem oder Tippfehler im Servernamen)."
+        return f"{context} failed: Hostname not found (DNS issue or typo in server name)."
     else:
-        return f"{context} fehlgeschlagen: {e}"
+        return f"{context} failed: {e}"
 
 def _cooldown_file(service):
+    """
+    Returns the path to the cooldown file for the given notification service.
+    """
     return f"/tmp/notify_cooldown_{service}.txt"
 
 def _can_send_notification(service, cooldown_minutes):
+    """
+    Checks if a notification can be sent for the given service,
+    based on the cooldown period.
+    """
     if not cooldown_minutes or cooldown_minutes <= 0:
         return True
     path = _cooldown_file(service)
@@ -32,10 +42,16 @@ def _can_send_notification(service, cooldown_minutes):
     return (time.time() - last) > cooldown_minutes * 60
 
 def _update_last_notification_time(service):
+    """
+    Updates the cooldown file with the current time for the given service.
+    """
     with open(_cooldown_file(service), "w") as f:
         f.write(str(time.time()))
 
 def notify_ntfy(url, message, service_name=None):
+    """
+    Sends a notification via ntfy.
+    """
     try:
         msg = f"[{service_name}] {message}" if service_name else message
         requests.post(url, data=msg.encode("utf-8"), timeout=5)
@@ -43,6 +59,9 @@ def notify_ntfy(url, message, service_name=None):
         logging.getLogger("NOTIFY").warning(human_error_message(e, "ntfy-Notification"))
 
 def notify_discord(webhook_url, message, service_name=None):
+    """
+    Sends a notification via Discord webhook.
+    """
     try:
         msg = f"[{service_name}] {message}" if service_name else message
         data = {"content": msg}
@@ -51,6 +70,9 @@ def notify_discord(webhook_url, message, service_name=None):
         logging.getLogger("NOTIFY").warning(human_error_message(e, "Discord-Notification"))
 
 def notify_slack(webhook_url, message, service_name=None):
+    """
+    Sends a notification via Slack webhook.
+    """
     try:
         msg = f"[{service_name}] {message}" if service_name else message
         data = {"text": msg}
@@ -59,6 +81,9 @@ def notify_slack(webhook_url, message, service_name=None):
         logging.getLogger("NOTIFY").warning(human_error_message(e, "Slack-Notification"))
 
 def notify_webhook(url, message, service_name=None):
+    """
+    Sends a notification via a generic webhook.
+    """
     try:
         msg = f"[{service_name}] {message}" if service_name else message
         data = {"message": msg}
@@ -67,6 +92,9 @@ def notify_webhook(url, message, service_name=None):
         logging.getLogger("NOTIFY").warning(human_error_message(e, "Webhook-Notification"))
 
 def notify_telegram(bot_token, chat_id, message, service_name=None):
+    """
+    Sends a notification via Telegram bot.
+    """
     try:
         msg = f"[{service_name}] {message}" if service_name else message
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
@@ -76,6 +104,9 @@ def notify_telegram(bot_token, chat_id, message, service_name=None):
         logging.getLogger("NOTIFY").warning(human_error_message(e, "Telegram-Notification"))
 
 def notify_email(cfg, subject, message, service_name=None):
+    """
+    Sends an email notification using the provided SMTP configuration.
+    """
     try:
         msg_text = f"[{service_name}] {message}" if service_name else message
         msg = MIMEText(msg_text)
@@ -113,6 +144,10 @@ def notify_email(cfg, subject, message, service_name=None):
         logging.getLogger("NOTIFY").warning(human_error_message(e, "E-Mail-Notification"))
 
 def reset_all_cooldowns():
+    """
+    Deletes all cooldown files for all notification services.
+    Used to reset cooldowns on container start if configured.
+    """
     for service in ["ntfy", "discord", "slack", "webhook", "telegram", "email"]:
         try:
             os.remove(_cooldown_file(service))
@@ -120,14 +155,26 @@ def reset_all_cooldowns():
             pass
 
 def send_notifications(config, level, message, subject=None, service_name=None):
-    # Cooldown-Reset bei Container-Start
+    """
+    Main function to send notifications to all enabled services,
+    respecting per-service cooldowns and logging the result.
+    """
+    # Cooldown reset on container start
     if config.get("reset_cooldown_on_start"):
         reset_all_cooldowns()
-        # Nur einmal pro Start ausführen, z.B. durch ein globales Flag
+        # Only execute once per start, e.g. via a global flag
         config["reset_cooldown_on_start"] = False
 
     if not config:
         return
+
+    # Helper for logging notification actions
+    def log_notify(service, sent, reason=""):
+        logger = logging.getLogger("NOTIFY")
+        if sent:
+            logger.info(f"Notification sent via {service}.")
+        else:
+            logger.info(f"Notification via {service} suppressed ({reason}).")
 
     # ntfy
     ntfy_cfg = config.get("ntfy")
@@ -136,6 +183,9 @@ def send_notifications(config, level, message, subject=None, service_name=None):
         if _can_send_notification("ntfy", cooldown):
             notify_ntfy(ntfy_cfg["url"], message, service_name)
             _update_last_notification_time("ntfy")
+            log_notify("ntfy", True)
+        else:
+            log_notify("ntfy", False, "cooldown active")
 
     # Discord
     discord_cfg = config.get("discord")
@@ -144,6 +194,9 @@ def send_notifications(config, level, message, subject=None, service_name=None):
         if _can_send_notification("discord", cooldown):
             notify_discord(discord_cfg["webhook_url"], message, service_name)
             _update_last_notification_time("discord")
+            log_notify("discord", True)
+        else:
+            log_notify("discord", False, "cooldown active")
 
     # Slack
     slack_cfg = config.get("slack")
@@ -152,6 +205,9 @@ def send_notifications(config, level, message, subject=None, service_name=None):
         if _can_send_notification("slack", cooldown):
             notify_slack(slack_cfg["webhook_url"], message, service_name)
             _update_last_notification_time("slack")
+            log_notify("slack", True)
+        else:
+            log_notify("slack", False, "cooldown active")
 
     # Webhook
     webhook_cfg = config.get("webhook")
@@ -160,6 +216,9 @@ def send_notifications(config, level, message, subject=None, service_name=None):
         if _can_send_notification("webhook", cooldown):
             notify_webhook(webhook_cfg["url"], message, service_name)
             _update_last_notification_time("webhook")
+            log_notify("webhook", True)
+        else:
+            log_notify("webhook", False, "cooldown active")
 
     # Telegram
     telegram_cfg = config.get("telegram")
@@ -168,11 +227,17 @@ def send_notifications(config, level, message, subject=None, service_name=None):
         if _can_send_notification("telegram", cooldown):
             notify_telegram(telegram_cfg["bot_token"], telegram_cfg["chat_id"], message, service_name)
             _update_last_notification_time("telegram")
+            log_notify("telegram", True)
+        else:
+            log_notify("telegram", False, "cooldown active")
 
     # Email
     email_cfg = config.get("email")
     if email_cfg and email_cfg.get("enabled") and level in email_cfg.get("notify_on", []):
         cooldown = email_cfg.get("cooldown", 0)
         if _can_send_notification("email", cooldown):
-            notify_email(email_cfg, subject or "DynDNS Client Benachrichtigung", message, service_name)
+            notify_email(email_cfg, subject or "DynDNS Client Notification", message, service_name)
             _update_last_notification_time("email")
+            log_notify("email", True)
+        else:
+            log_notify("email", False, "cooldown active")

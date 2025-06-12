@@ -6,7 +6,7 @@ import yaml
 import logging
 from notify import send_notifications
 
-config = None  # global, damit update_provider darauf zugreifen kann
+config = None  # global, so update_provider can access it
 
 def setup_logging(level_str):
     level = getattr(logging, level_str.upper(), logging.INFO)
@@ -36,31 +36,31 @@ def log(msg, level="INFO", section="MAIN"):
 
 def get_public_ip(ip_service):
     """
-    Holt die öffentliche IPv4-Adresse vom angegebenen Service.
+    Fetches the public IPv4 address from the given service.
     """
     try:
         response = requests.get(ip_service, timeout=10)
         response.raise_for_status()
         return response.text.strip()
     except Exception as e:
-        log(f"Fehler beim Abrufen der öffentlichen IP: {e}", "ERROR")
+        log(f"Error fetching public IP: {e}", "ERROR")
         return None
 
 def get_public_ipv6(ip_service="https://api64.ipify.org"):
     """
-    Holt die öffentliche IPv6-Adresse vom angegebenen Service.
+    Fetches the public IPv6 address from the given service.
     """
     try:
         response = requests.get(ip_service)
         response.raise_for_status()
         return response.text.strip()
     except Exception as e:
-        log(f"Fehler beim Abrufen der öffentlichen IPv6: {e}", "ERROR")
+        log(f"Error fetching public IPv6: {e}", "ERROR")
         return None
 
 def get_cloudflare_zone_id(api_token, zone_name):
     """
-    Holt die Zone-ID für eine Cloudflare-Zone anhand des Namens.
+    Retrieves the zone ID for a Cloudflare zone by name.
     """
     url = f"https://api.cloudflare.com/client/v4/zones?name={zone_name}"
     headers = {"Authorization": f"Bearer {api_token}"}
@@ -68,11 +68,11 @@ def get_cloudflare_zone_id(api_token, zone_name):
     data = resp.json()
     if data.get("success") and data["result"]:
         return data["result"][0]["id"]
-    raise Exception(f"Zone-ID für {zone_name} nicht gefunden: {data}")
+    raise Exception(f"Zone ID for {zone_name} not found: {data}")
 
 def get_cloudflare_record_id(api_token, zone_id, record_name):
     """
-    Holt die Record-ID für einen DNS-Record in einer Cloudflare-Zone.
+    Retrieves the record ID for a DNS record in a Cloudflare zone.
     """
     url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records?name={record_name}"
     headers = {"Authorization": f"Bearer {api_token}"}
@@ -80,12 +80,12 @@ def get_cloudflare_record_id(api_token, zone_id, record_name):
     data = resp.json()
     if data.get("success") and data["result"]:
         return data["result"][0]["id"]
-    raise Exception(f"DNS-Record-ID für {record_name} nicht gefunden: {data}")
+    raise Exception(f"DNS record ID for {record_name} not found: {data}")
 
 def update_cloudflare(provider, ip, ip6=None):
     """
-    Aktualisiert einen A- und ggf. AAAA-Record bei Cloudflare, falls sich die IP geändert hat.
-    Gibt "updated", "nochg" oder False zurück.
+    Updates an A and optionally AAAA record at Cloudflare if the IP has changed.
+    Returns "updated", "nochg" or False.
     """
     api_token = provider['api_token']
     zone = provider['zone']
@@ -101,7 +101,6 @@ def update_cloudflare(provider, ip, ip6=None):
 
     # --- IPv4 (A-Record) ---
     if ip:
-        # Hole Record-ID für A-Record
         url_a = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records?name={record_name}&type=A"
         resp_a = requests.get(url_a, headers=headers)
         data_a = resp_a.json()
@@ -109,9 +108,8 @@ def update_cloudflare(provider, ip, ip6=None):
         if data_a.get("success") and data_a["result"]:
             record_a = data_a["result"][0]
             if record_a["content"] == ip:
-                log(f"Kein Update notwendig (IPv4 bereits gesetzt: {ip}).", "INFO", section="CLOUDFLARE")
+                log(f"No update needed (IPv4 already set: {ip}).", "INFO", section="CLOUDFLARE")
             else:
-                # Update A-Record
                 url_patch = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record_a['id']}"
                 data_patch = {
                     "type": "A",
@@ -124,7 +122,7 @@ def update_cloudflare(provider, ip, ip6=None):
                     updated = True
                     nochg = False
         else:
-            log(f"A-Record {record_name} nicht gefunden oder Fehler: {data_a}", "ERROR", section="CLOUDFLARE")
+            log(f"A record {record_name} not found or error: {data_a}", "ERROR", section="CLOUDFLARE")
             nochg = False
 
     # --- IPv6 (AAAA-Record) ---
@@ -136,9 +134,8 @@ def update_cloudflare(provider, ip, ip6=None):
         if data_aaaa.get("success") and data_aaaa["result"]:
             record_aaaa = data_aaaa["result"][0]
             if record_aaaa["content"] == ip6:
-                log(f"Kein Update notwendig (IPv6 bereits gesetzt: {ip6}).", "INFO", section="CLOUDFLARE")
+                log(f"No update needed (IPv6 already set: {ip6}).", "INFO", section="CLOUDFLARE")
             else:
-                # Update AAAA-Record
                 url_patch = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record_aaaa['id']}"
                 data_patch = {
                     "type": "AAAA",
@@ -151,7 +148,7 @@ def update_cloudflare(provider, ip, ip6=None):
                     updated = True
                     nochg = False
         else:
-            log(f"AAAA-Record {record_name} nicht gefunden oder Fehler: {data_aaaa}", "ERROR", section="CLOUDFLARE")
+            log(f"AAAA record {record_name} not found or error: {data_aaaa}", "ERROR", section="CLOUDFLARE")
             nochg = False
 
     if updated:
@@ -162,12 +159,11 @@ def update_cloudflare(provider, ip, ip6=None):
 
 def update_ipv64(provider, ip, ip6=None):
     """
-    Aktualisiert einen Record bei ipv64.net.
-    Unterstützt IPv4 und IPv6.
-    Gibt "updated", "nochg" oder False zurück.
-    Die URL ist fest im Code hinterlegt.
+    Updates a record at ipv64.net.
+    Supports IPv4 and IPv6.
+    Returns "updated", "nochg" or False.
+    The URL is hardcoded.
     """
-    # Feste URL für ipv64.net
     url = "https://ipv64.net/nic/update"
     params = {}
     if 'domain' in provider:
@@ -191,43 +187,36 @@ def update_ipv64(provider, ip, ip6=None):
     response = requests.get(url, params=params, auth=auth, headers=headers)
     log(f"ipv64 response: {response.text}", section="IPV64")
     resp_text = response.text.lower().strip()
-    # Updatelimit-Check
     if "overcommited" in resp_text or response.status_code == 403:
-        log("Updateintervall bei ipv64.net überschritten! Updatelimit erreicht.", "ERROR", section="IPV64")
+        log("Update interval at ipv64.net exceeded! Update limit reached.", "ERROR", section="IPV64")
         return False
-    # Kein Update notwendig
     if "nochg" in resp_text or "no change" in resp_text:
-        log("Kein Update notwendig (nochg).", "INFO", section="IPV64")
+        log("No update needed (nochg).", "INFO", section="IPV64")
         return "nochg"
-    # Erfolg
     if "good" in resp_text or "success" in resp_text:
         return "updated"
-    # Fehler
-    log(f"ipv64-Update fehlgeschlagen: {response.text}", "ERROR", section="IPV64")
+    log(f"ipv64 update failed: {response.text}", "ERROR", section="IPV64")
     return False
 
 def update_dyndns2(provider, ip, ip6=None):
     """
-    Aktualisiert einen DynDNS2-kompatiblen Provider (z.B. DuckDNS, NoIP, Dynu).
-    Unterstützt IPv4 und IPv6.
-    Gibt "updated", "nochg" oder False zurück.
+    Updates a DynDNS2-compatible provider (e.g. DuckDNS, NoIP, Dynu).
+    Supports IPv4 and IPv6.
+    Returns "updated", "nochg" or False.
     """
     url = provider['url']
     params = {}
-    # Domain/Host/Hostname
     if 'hostname' in provider:
         params['hostname'] = provider['hostname']
     elif 'domain' in provider:
         params['domain'] = provider['domain']
     elif 'host' in provider:
         params['host'] = provider['host']
-    # IP
     if ip:
-        params['myip'] = ip  # Dynu erwartet 'myip'
+        params['myip'] = ip
     if ip6:
         params['myipv6'] = ip6
 
-    # Authentifizierung
     auth = None
     headers = {}
     auth_method = provider.get('auth_method', 'token')
@@ -253,16 +242,15 @@ def update_dyndns2(provider, ip, ip6=None):
     provider_name = provider.get('name', 'dyndns2')
     log(f"[{provider_name}] response: {response.text}", section="DYNDNS2")
 
-    # Erfolg prüfen
     resp_text = response.text.lower().strip()
     if "nochg" in resp_text:
-        log(f"[{provider_name}] Kein Update notwendig (nochg).", "INFO", section="DYNDNS2")
+        log(f"[{provider_name}] No update needed (nochg).", "INFO", section="DYNDNS2")
         return "nochg"
     elif any(success in resp_text for success in ["good", "success"]):
         return "updated"
     else:
         log(
-            f"[{provider_name}] DynDNS2-Update fehlgeschlagen: {response.text}",
+            f"[{provider_name}] DynDNS2 update failed: {response.text}",
             "ERROR",
             section="DYNDNS2"
         )
@@ -270,38 +258,36 @@ def update_dyndns2(provider, ip, ip6=None):
 
 def validate_config(config):
     """
-    Prüft die config.yaml auf notwendige Felder und gibt Fehler mit Zeilenangabe aus.
-    Gibt True zurück, wenn alles passt, sonst False.
+    Checks config.yaml for required fields and prints errors with line numbers.
+    Returns True if everything is fine, otherwise False.
     """
     required_top = ["timer", "providers"]
     allowed_protocols = ("cloudflare", "ipv64", "dyndns2")
     for key in required_top:
         if key not in config:
-            log(f"Fehlender Schlüssel '{key}' in config.yaml.", "ERROR")
+            log(f"Missing key '{key}' in config.yaml.", "ERROR")
             return False
     if not isinstance(config["providers"], list):
-        log("Das Feld 'providers' muss eine Liste sein.", "ERROR")
+        log("The field 'providers' must be a list.", "ERROR")
         return False
     for idx, provider in enumerate(config["providers"]):
         if "protocol" not in provider:
-            log(f"Fehlendes Feld 'protocol' bei Provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
+            log(f"Missing field 'protocol' in provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
             return False
         if provider["protocol"] not in allowed_protocols:
             log(
-                f"Ungültiges Feld 'protocol' ('{provider['protocol']}') bei Provider #{idx+1} ({provider.get('name','?')}) in config.yaml. "
-                f"Erlaubt: {', '.join(allowed_protocols)}.",
+                f"Invalid field 'protocol' ('{provider['protocol']}') in provider #{idx+1} ({provider.get('name','?')}) in config.yaml. "
+                f"Allowed: {', '.join(allowed_protocols)}.",
                 "ERROR"
             )
             return False
-        # Nur für cloudflare und dyndns2 ist url Pflicht, nicht für ipv64!
         if "url" not in provider and provider["protocol"] not in ("cloudflare", "ipv64"):
-            log(f"Fehlendes Feld 'url' bei Provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
+            log(f"Missing field 'url' in provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
             return False
-        # Weitere Checks je nach protocol
         if provider["protocol"] == "cloudflare":
             for field in ("zone", "api_token", "record_name"):
                 if field not in provider:
-                    log(f"Fehlendes Feld '{field}' bei Cloudflare-Provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
+                    log(f"Missing field '{field}' in Cloudflare provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
                     return False
     return True
 
@@ -320,53 +306,53 @@ def save_last_ip(ip_version, ip):
         with open(_ip_cache_file(ip_version), "w") as f:
             f.write(str(ip) if ip is not None else "")
     except Exception as e:
-        log(f"Fehler beim Speichern der letzten IP ({ip_version}): {e}", "ERROR", section="MAIN")
+        log(f"Error saving last IP ({ip_version}): {e}", "ERROR", section="MAIN")
 
 def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
     """
-    Wählt anhand des Protokolls die passende Update-Funktion für den Provider.
-    Loggt das Ergebnis und gibt True (Update/nochg) oder False (Fehler) zurück.
+    Selects the appropriate update function for the provider based on the protocol.
+    Logs the result and returns True (update/nochg) or False (error).
     """
     try:
         if provider.get("protocol") == "cloudflare":
             result = update_cloudflare(provider, ip, ip6)
             if result == "updated":
-                log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "INFO", section="CLOUDFLARE")
-                send_notifications(config.get("notify"), "UPDATE", "IP-Adresse wurde erfolgreich aktualisiert.", "DynDNS Update")
+                log(f"Provider '{provider.get('name')}' updated successfully.", "INFO", section="CLOUDFLARE")
+                send_notifications(config.get("notify"), "UPDATE", "IP address updated successfully.", "DynDNS Update")
             elif result == "nochg":
                 if log_success_if_nochg:
-                    log(f"Provider '{provider.get('name')}' war bereits aktuell, kein Update durchgeführt.", "INFO", section="CLOUDFLARE")
+                    log(f"Provider '{provider.get('name')}' was already up to date, no update performed.", "INFO", section="CLOUDFLARE")
             else:
-                log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section="CLOUDFLARE")
-                send_notifications(config.get("notify"), "ERROR", "Update fehlgeschlagen!", "DynDNS Fehler")
+                log(f"Provider '{provider.get('name')}' could not be updated.", "ERROR", section="CLOUDFLARE")
+                send_notifications(config.get("notify"), "ERROR", "Update failed!", "DynDNS Error")
             return result == "updated" or (log_success_if_nochg and result == "nochg")
         if provider.get("protocol") == "ipv64":
             result = update_ipv64(provider, ip, ip6)
             if result == "updated":
-                log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "INFO", section="IPV64")
-                send_notifications(config.get("notify"), "UPDATE", "IP-Adresse wurde erfolgreich aktualisiert.", "DynDNS Update")
+                log(f"Provider '{provider.get('name')}' updated successfully.", "INFO", section="IPV64")
+                send_notifications(config.get("notify"), "UPDATE", "IP address updated successfully.", "DynDNS Update")
             elif result == "nochg":
                 if log_success_if_nochg:
-                    log(f"Provider '{provider.get('name')}' war bereits aktuell, kein Update durchgeführt.", "INFO", section="IPV64")
+                    log(f"Provider '{provider.get('name')}' was already up to date, no update performed.", "INFO", section="IPV64")
             else:
-                log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section="IPV64")
-                send_notifications(config.get("notify"), "ERROR", "Update fehlgeschlagen!", "DynDNS Fehler")
+                log(f"Provider '{provider.get('name')}' could not be updated.", "ERROR", section="IPV64")
+                send_notifications(config.get("notify"), "ERROR", "Update failed!", "DynDNS Error")
             return result == "updated" or (log_success_if_nochg and result == "nochg")
         if provider.get("protocol") == "dyndns2":
             result = update_dyndns2(provider, ip, ip6)
             if result == "updated":
-                log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "INFO", section="DYNDNS2")
-                send_notifications(config.get("notify"), "UPDATE", "IP-Adresse wurde erfolgreich aktualisiert.", "DynDNS Update")
+                log(f"Provider '{provider.get('name')}' updated successfully.", "INFO", section="DYNDNS2")
+                send_notifications(config.get("notify"), "UPDATE", "IP address updated successfully.", "DynDNS Update")
             elif result == "nochg":
                 if log_success_if_nochg:
-                    log(f"Provider '{provider.get('name')}' war bereits aktuell, kein Update durchgeführt.", "INFO", section="DYNDNS2")
+                    log(f"Provider '{provider.get('name')}' was already up to date, no update performed.", "INFO", section="DYNDNS2")
             else:
-                log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section="DYNDNS2")
-                send_notifications(config.get("notify"), "ERROR", "Update fehlgeschlagen!", "DynDNS Fehler")
+                log(f"Provider '{provider.get('name')}' could not be updated.", "ERROR", section="DYNDNS2")
+                send_notifications(config.get("notify"), "ERROR", "Update failed!", "DynDNS Error")
             return result == "updated" or (log_success_if_nochg and result == "nochg")
     except Exception as e:
-        log(f"Update für Provider '{provider.get('name')}' fehlgeschlagen: {e}", "ERROR", section=provider.get("name", "PROVIDER").upper())
-        send_notifications(config.get("notify"), "ERROR", "Update fehlgeschlagen!", "DynDNS Fehler")
+        log(f"Update for provider '{provider.get('name')}' failed: {e}", "ERROR", section=provider.get("name", "PROVIDER").upper())
+        send_notifications(config.get("notify"), "ERROR", "Update failed!", "DynDNS Error")
         return False
 
 def main():
@@ -374,12 +360,12 @@ def main():
     config_path = 'config/config.yaml'
     if not os.path.exists(config_path):
         setup_logging("INFO")
-        log("config/config.yaml nicht gefunden! Bitte eigene Konfiguration bereitstellen oder config.example.yaml kopieren.\n"
-            "Siehe Anleitung im Repository: https://github.com/alex-1987/dyndns-docker-client\n"
-            "Beispiel für Docker Compose:\n"
+        log("config/config.yaml not found! Please provide your own configuration or copy config.example.yaml.\n"
+            "See instructions in the repository: https://github.com/alex-1987/dyndns-docker-client\n"
+            "Example for Docker Compose:\n"
             "  volumes:\n"
             "    - ./config:/app/config\n"
-            "und lege deine config.yaml in das Verzeichnis ./config auf dem Host.",
+            "and place your config.yaml in the ./config directory on the host.",
             "CRITICAL"
         )
         sys.exit(1)
@@ -388,44 +374,43 @@ def main():
             config = yaml.safe_load(f)
         except Exception as e:
             setup_logging("INFO")
-            log(f"Fehler beim Laden der config.yaml: {e}", "ERROR")
+            log(f"Error loading config.yaml: {e}", "ERROR")
             sys.exit(1)
-    # Setze Logging-Level aus Config (Default: INFO)
     loglevel = config.get("loglevel", "INFO")
     setup_logging(loglevel)
     last_config_mtime = os.path.getmtime(config_path)
     if not config or not isinstance(config, dict):
         log(
-            "config.yaml ist leer oder ungültig! Bitte prüfe die Datei und orientiere dich an config.example.yaml.\n"
-            "Siehe Anleitung im Repository: https://github.com/alex-1987/dyndns-docker-client",
+            "config.yaml is empty or invalid! Please check the file and refer to config.example.yaml.\n"
+            "See instructions in the repository: https://github.com/alex-1987/dyndns-docker-client",
             "CRITICAL"
         )
         sys.exit(1)
     if "providers" not in config or not isinstance(config["providers"], list) or not config["providers"]:
         log(
-            "config.yaml enthält keine Provider! Bitte trage mindestens einen Provider unter 'providers:' ein.\n"
-            "Siehe Anleitung und Beispiele im Repository: https://github.com/alex-1987/dyndns-docker-client",
+            "config.yaml does not contain any providers! Please add at least one provider under 'providers:'.\n"
+            "See instructions and examples in the repository: https://github.com/alex-1987/dyndns-docker-client",
             "CRITICAL"
         )
         sys.exit(1)
     if not validate_config(config):
-        log("Konfiguration ungültig. Programm wird beendet.", "CRITICAL")
+        log("Configuration invalid. Program will exit.", "CRITICAL")
         sys.exit(1)
     timer = config.get('timer', 300)
     ip_service = config.get('ip_service', 'https://api.ipify.org')
     ip6_service = config.get('ip6_service', None)
     providers = config['providers']
 
-    log(f"Teste Erreichbarkeit von ip_service: {ip_service}", section="MAIN")
+    log(f"Testing reachability of ip_service: {ip_service}", section="MAIN")
     test_ip = get_public_ip(ip_service) if ip_service else None
     test_ip6 = get_public_ipv6(ip6_service) if ip6_service else None
     if not test_ip and not test_ip6:
-        log("Programm wird beendet, da weder ip_service noch ip6_service erreichbar ist.", "CRITICAL")
+        log("Program will exit because neither ip_service nor ip6_service is reachable.", "CRITICAL")
         return
     if test_ip:
-        log(f"ip_service erreichbar. Öffentliche IP: {test_ip}", section="MAIN")
+        log(f"ip_service reachable. Public IP: {test_ip}", section="MAIN")
     if test_ip6:
-        log(f"ip6_service erreichbar. Öffentliche IPv6: {test_ip6}", section="MAIN")
+        log(f"ip6_service reachable. Public IPv6: {test_ip6}", section="MAIN")
 
     # --- PATCH: skip_update_on_startup ---
     skip_on_startup = config.get("skip_update_on_startup", False)
@@ -435,48 +420,48 @@ def main():
     ip6_changed = (test_ip6 != last_ip6) if test_ip6 else False
 
     if skip_on_startup and not ip_changed and not ip6_changed:
-        log("IP hat sich seit letztem Lauf nicht geändert. Keine Provider-Updates beim Start nötig.", "INFO", section="MAIN")
+        log("IP has not changed since last run. No provider updates needed on startup.", "INFO", section="MAIN")
         # IPs trotzdem speichern, falls sie vorher noch nicht gespeichert waren
         save_last_ip("v4", test_ip)
         save_last_ip("v6", test_ip6)
         last_ip = test_ip
         last_ip6 = test_ip6
     else:
-        log("Starte Initial-Update-Durchlauf für alle Provider...", section="MAIN")
+        log("Starting initial update run for all providers...", section="MAIN")
         failed_providers = []
         for provider in providers:
             result = update_provider(provider, test_ip, test_ip6)
             section = provider.get('name', 'PROVIDER').upper()
             if not (result or result == "nochg"):
-                log(f"Provider '{provider.get('name')}' konnte initial nicht aktualisiert werden.", "WARNING", section=section)
+                log(f"Provider '{provider.get('name')}' could not be updated initially.", "WARNING", section=section)
                 failed_providers.append(provider)
         save_last_ip("v4", test_ip)
         save_last_ip("v6", test_ip6)
         last_ip = test_ip
         last_ip6 = test_ip6
-    # --- PATCH ENDE ---
+    # --- END PATCH ---
 
     elapsed = 0
-    check_interval = 2  # Sekunden, wie oft auf Config-Änderung geprüft wird
+    check_interval = 2  # Seconds, how often to check for config changes
 
-    log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
+    log(f"Next run in {timer} seconds...", section="MAIN")
 
     while True:
         time.sleep(check_interval)
         elapsed += check_interval
 
-        # Prüfe, ob sich die Config geändert hat
+        # Check if config has changed
         current_mtime = os.path.getmtime(config_path)
         if current_mtime != last_config_mtime:
-            log("Änderung an config.yaml erkannt. Lade neue Konfiguration und starte einen neuen Durchlauf.", section="MAIN")
+            log("Change in config.yaml detected. Reloading configuration and starting a new run.", section="MAIN")
             with open(config_path, 'r') as f:
                 try:
                     config = yaml.safe_load(f)
                 except Exception as e:
-                    log(f"Fehler beim Laden der config.yaml nach Änderung: {e}\nBitte prüfe die Datei und orientiere dich an config.example.yaml.", "ERROR")
+                    log(f"Error loading config.yaml after change: {e}\nPlease check the file and refer to config.example.yaml.", "ERROR")
                     continue
             if not validate_config(config):
-                log("Konfiguration ungültig nach Änderung. Warte auf nächste Änderung...", "ERROR")
+                log("Configuration invalid after change. Waiting for next change...", "ERROR")
                 continue
             timer = config.get('timer', 300)
             ip_service = config.get('ip_service', 'https://api.ipify.org')
@@ -486,60 +471,59 @@ def main():
             current_ip = get_public_ip(ip_service) if ip_service else None
             current_ip6 = get_public_ipv6(ip6_service) if ip6_service else None
             if current_ip:
-                log(f"Aktuelle öffentliche IP: {current_ip}", section="MAIN")
+                log(f"Current public IP: {current_ip}", section="MAIN")
             if current_ip6:
-                log(f"Aktuelle öffentliche IPv6: {current_ip6}", section="MAIN")
+                log(f"Current public IPv6: {current_ip6}", section="MAIN")
             failed_providers = []
             for provider in providers:
                 result = update_provider(provider, current_ip, current_ip6)
                 section = provider.get('name', 'PROVIDER').upper()
                 if not (result or result == "nochg"):
-                    log(f"Provider '{provider.get('name')}' konnte nach Config-Änderung nicht aktualisiert werden.", "WARNING", section=section)
+                    log(f"Provider '{provider.get('name')}' could not be updated after config change.", "WARNING", section=section)
                     failed_providers.append(provider)
             last_ip = current_ip
             last_ip6 = current_ip6
             elapsed = 0
-            log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
+            log(f"Next run in {timer} seconds...", section="MAIN")
             continue
 
-        # Timer-Update wie gehabt
+        # Timer-based update as usual
         if elapsed >= timer:
             current_ip = get_public_ip(ip_service) if ip_service else None
             current_ip6 = get_public_ipv6(ip6_service) if ip6_service else None
             if current_ip:
-                log(f"Aktuelle öffentliche IP: {current_ip}", section="MAIN")
+                log(f"Current public IP: {current_ip}", section="MAIN")
             if current_ip6:
-                log(f"Aktuelle öffentliche IPv6: {current_ip6}", section="MAIN")
-            # Prüfe auf IP-Änderung oder Fehler-Provider
+                log(f"Current public IPv6: {current_ip6}", section="MAIN")
+            # Check for IP change or failed providers
             ip_changed = (current_ip != last_ip) if ip_service else False
             ip6_changed = (current_ip6 != last_ip6) if ip6_service else False
             if ip_changed or ip6_changed or failed_providers:
                 if ip_changed:
-                    log(f"Neue IP erkannt: {current_ip} (vorher: {last_ip}) – Update wird durchgeführt.", section="MAIN")
+                    log(f"New IP detected: {current_ip} (previous: {last_ip}) – update will be performed.", section="MAIN")
                 if ip6_changed:
-                    log(f"Neue IPv6 erkannt: {current_ip6} (vorher: {last_ip6}) – Update wird durchgeführt.", section="MAIN")
-                # Prüfe alle Provider, aber Fehler-Provider immer erneut!
+                    log(f"New IPv6 detected: {current_ip6} (previous: {last_ip6}) – update will be performed.", section="MAIN")
+                # Check all providers, always retry failed providers!
                 retry_providers = failed_providers.copy()
                 failed_providers = []
                 for provider in providers:
-                    # Wenn Provider in retry_providers oder IP geändert, erneut versuchen
+                    # Retry if provider was in failed_providers or IP changed
                     if provider in retry_providers or ip_changed or ip6_changed:
                         result = update_provider(provider, current_ip, current_ip6)
                         section = provider.get('name', 'PROVIDER').upper()
-                        # Entfernt: doppeltes Fehler-Log
                         if not (result or result == "nochg"):
                             failed_providers.append(provider)
                 last_ip = current_ip
                 last_ip6 = current_ip6
                 elapsed = 0
-                log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
+                log(f"Next run in {timer} seconds...", section="MAIN")
             else:
                 if current_ip:
-                    log(f"IP unverändert ({current_ip}), kein Update notwendig.", section="MAIN")
+                    log(f"IP unchanged ({current_ip}), no update needed.", section="MAIN")
                 if current_ip6:
-                    log(f"IPv6 unverändert ({current_ip6}), kein Update notwendig.", section="MAIN")
+                    log(f"IPv6 unchanged ({current_ip6}), no update needed.", section="MAIN")
                 elapsed = 0
-                log(f"Nächster Durchlauf in {timer} Sekunden...", section="MAIN")
+                log(f"Next run in {timer} seconds...", section="MAIN")
 
 if __name__ == "__main__":
     main()

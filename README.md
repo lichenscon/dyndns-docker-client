@@ -1,333 +1,140 @@
 # DynDNS Docker Client
----
 
-## **WICHTIG:**
-**Lege im Ordner `config` auf deinem Host eine Datei mit dem Namen `config.yaml` an!**  
-Der Inhalt sollte sich an der mitgelieferten `config.example.yaml` orientieren.  
-Ohne diese Datei startet der Container nicht korrekt.
-
----
-## Hinweis zur Entstehung
-
-Dieses Projekt wurde mit Unterstützung von **GitHub Copilot** erstellt.  
-Bei Fehlern oder Verbesserungsvorschlägen gerne ein Issue im Repository eröffnen!
-
----
-## Support & Mitmachen
-
-Pull Requests und Verbesserungen sind willkommen!  
-Bei Fragen oder Problemen bitte ein Issue auf GitHub eröffnen.
+> :de: Für die deutsche Anleitung siehe [README.de.md](README.de.md)
 
 ---
 
+## Table of Contents
 
-## Docker: Build & Run
+1. [Overview](#overview)
+2. [Features](#features)
+3. [Quick Start (Docker & Compose)](#quick-start-docker--compose)
+4. [Configuration](#configuration-configconfigyaml)
+   - [Basic Options](#basic-options)
+   - [Provider Configuration](#provider-configuration)
+   - [Notifications & Cooldown](#notifications--cooldown)
+   - [Provider Update on Startup Only if IP Changed](#provider-update-on-startup-only-if-ip-changed)
+5. [Examples](#examples)
+6. [Error Handling & Tips](#error-handling--tips)
+7. [Contributing & Support](#contributing--support)
+8. [License](#license)
 
-### Offizielles Image von Docker Hub
+---
 
-Du kannst direkt das aktuelle, stabile Image von Docker Hub verwenden:
+## Overview
+
+This project is a flexible DynDNS client for various providers (e.g. Cloudflare, ipv64, DuckDNS, NoIP, Dynu) and runs as a Docker container.  
+It supports IPv4 and optionally IPv6, regularly checks the public IP, and updates DNS records at the configured services.
+
+---
+
+## Features
+
+- **Multiple Providers:** Supports Cloudflare, ipv64, DuckDNS, NoIP, Dynu, and other DynDNS2-compatible services.
+- **IPv4 & IPv6:** Updates A and AAAA records if desired.
+- **Automatic Reload:** Changes to `config.yaml` are detected and applied automatically.
+- **Flexible Configuration:** Each provider can be named freely; the type is controlled via the `protocol` field.
+- **Detailed Logging:** Shows whether an update was performed, was not needed, or an error occurred.
+- **Notification Cooldown:** Each notification service can have its own cooldown to avoid spam.
+- **Provider Update on Startup Only if IP Changed:** Saves unnecessary requests and protects against rate limits.
+
+---
+
+## Quick Start (Docker & Compose)
+
+### Official Image from Docker Hub
 
 ```sh
 docker pull alexfl1987/dyndns:latest-stable
 ```
 
-Starte den Container mit deiner eigenen Konfiguration:
+Start the container with your own configuration:
 
 ```sh
-docker run -u 1000:1000 \ 
+docker run -u 1000:1000 \
   -d --name dyndns-client \
   -v $(pwd)/config/config.yaml:/app/config/config.yaml \
   alexfl1987/dyndns:latest-stable
 ```
 
-> **Hinweis:**  
-> Existiert keine `config/config.yaml`, gibt der Container beim Start einen Fehler aus.
+> **Note:**  
+> If `config/config.yaml` does not exist, the container will exit with an error.
 
 ---
 
-### Docker Compose Beispiel
+### Docker Compose Example
 
-Lege eine Datei `docker-compose.yml` an:
+Create a `docker-compose.yml` file:
 
 ```yaml
 services:
   dyndns-client:
     image: alexfl1987/dyndns:latest-stable
     container_name: dyndns-client
-    user: "1000:1000"   # Beispiel: als User mit UID 1000 und GID 1000 starten
+    user: "1000:1000"
     volumes:
       - ./config:/app/config
     restart: unless-stopped
 ```
 
-Starte mit:
+Start with:
 
 ```sh
 docker compose up -d
 ```
 
-> **Hinweis:**  
+> **Note:**  
 > **Lege deine `config.yaml` im lokalen `./config`-Verzeichnis ab!**
 > Ohne diese Datei startet der Container nicht korrekt.
 > Der Inhalt sollte sich an `config.example.yaml` orientieren.
 
 ---
 
-## Schnellstart mit Docker (lokal bauen)
+## Configuration (`config/config.yaml`)
 
-1. **Beispiel-Konfiguration kopieren:**
+**IMPORTANT:**  
+Create a `config.yaml` file in the `config` folder!  
+The content should be based on the provided `config.example.yaml`.
 
-   Kopiere die mitgelieferte Beispiel-Konfiguration und passe sie an:
-   ```sh
-   mkdir -p config
-   cp config.example.yaml config/config.yaml
-   # ...bearbeite config/config.yaml nach deinen Bedürfnissen...
-   ```
-
-2. **Docker-Image bauen:**
-   ```sh
-   docker build -t dyndns-client .
-   ```
-
-3. **Container starten (mit eigener config.yaml):**
-   ```sh
-   docker run -d \
-     --name dyndns-client \
-     -v $(pwd)/config:/app/config \
-     dyndns-client
-   ```
-
----
-
-## Übersicht
-
-Dieses Projekt ist ein flexibler DynDNS-Client für verschiedene Provider (z.B. Cloudflare, ipv64, DuckDNS, NoIP, Dynu) und läuft als Docker-Container.  
-Es unterstützt IPv4 und optional IPv6, prüft regelmäßig die öffentliche IP und aktualisiert die DNS-Einträge bei den konfigurierten Diensten.
-
----
-
-## Features
-
-- **Mehrere Provider:** Unterstützt Cloudflare, ipv64, DuckDNS, NoIP, Dynu und andere DynDNS2-kompatible Dienste.
-- **IPv4 & IPv6:** Aktualisiert A- und AAAA-Records, wenn gewünscht.
-- **Automatisches Nachladen:** Änderungen an der `config.yaml` werden automatisch erkannt und übernommen.
-- **Flexible Konfiguration:** Jeder Provider kann beliebig benannt werden, der Typ wird über das Feld `protocol` gesteuert.
-- **Detailliertes Logging:** Zeigt an, ob ein Update durchgeführt wurde, nicht nötig war oder ein Fehler auftrat.
-
----
-
-## Konfiguration (`config/config.yaml`)
-
-**WICHTIG:**  
-**Lege im Ordner `config` eine Datei `config.yaml` an!**  
-Der Inhalt sollte sich an der mitgelieferten `config.example.yaml` orientieren.
-
-Die Datei `config/config.yaml` steuert das Verhalten des Containers.  
-**Beispiel:**
+### Basic Options
 
 ```yaml
-timer: 300  # Intervall in Sekunden für die IP-Prüfung
-ip_service: "https://api.ipify.org"  # Service zum Abrufen der öffentlichen IPv4
-ip6_service: "https://api64.ipify.org"  # (Optional) Service zum Abrufen der öffentlichen IPv6
-
-providers: []
-# ACHTUNG: Dieses Feld darf NICHT entfernt oder auskommentiert werden!
-# Trage hier deine Provider ein, siehe Beispiele in config.example.yaml
-
-#   - name: duckdns
-#     protocol: dyndns2
-#     url: "https://www.duckdns.org/update"
-#     token: "your-duckdns-token"
-#     domain: "example"  # DuckDNS erwartet 'domain'
-
-#   - name: noip-home
-#     protocol: dyndns2
-#     url: "https://dynupdate.no-ip.com/nic/update"
-#     username: "your-noip-username"
-#     password: "your-noip-password"
-#     hostname: "example.ddns.net"  # NoIP erwartet 'hostname'
-
-#   - name: mein-cloudflare
-#     protocol: cloudflare
-#     zone: "deinedomain.tld"
-#     api_token: "dein_cloudflare_api_token"
-#     record_name: "sub.domain.tld"
-
-#   - name: mein-ipv64
-#     protocol: ipv64
-#     auth_method: "token"
-#     token: "dein_update_token"
-#     domain: "deinedomain.ipv64.net"  # ipv64 erwartet 'domain'
-
-#   - name: dynu
-#     protocol: dyndns2
-#     url: "https://api.dynu.com/nic/update"
-#     auth_method: "basic"
-#     username: "deinuser"
-#     password: "deinpass"
-#     hostname: "deinedomain.dynu.net"  # Dynu erwartet 'hostname'
+timer: 300  # Interval in seconds for IP checks
+ip_service: "https://api.ipify.org"  # Service to fetch public IPv4
+ip6_service: "https://api64.ipify.org"  # (Optional) Service to fetch public IPv6
+skip_update_on_startup: true  # See below!
 ```
 
-### Hinweise zur Konfiguration
-
-- **timer:** Wie oft (in Sekunden) die IP geprüft und ggf. ein Update durchgeführt wird.
-- **ip_service:** URL eines Dienstes, der die aktuelle öffentliche IPv4 zurückliefert (z.B. [ipify.org](https://www.ipify.org/)).
-- **ip6_service:** (Optional) URL eines Dienstes, der die aktuelle öffentliche IPv6 zurückliefert (z.B. [api64.ipify.org](https://api64.ipify.org/)).
-- **providers:** Liste der zu aktualisierenden Dienste. Jeder Eintrag beschreibt einen Provider.
-- **protocol:** Muss einer der folgenden Werte sein: `cloudflare`, `ipv64`, `dyndns2`.
-- **IPv6:**  
-  Um IPv6 zu nutzen, trage einen passenden Service unter `ip6_service` ein. Die Adresse wird dann automatisch an Provider übergeben, die IPv6 unterstützen.
-
-#### Provider-spezifische Felder
-
-- **Cloudflare:**  
-  - `zone`: Deine Domain (z.B. `example.com`)
-  - `api_token`: Cloudflare API-Token mit DNS-Rechten
-  - `record_name`: Der zu aktualisierende DNS-Record (z.B. `sub.domain.tld`)
-  - **Hinweis:** Die URL ist im Code fest hinterlegt, du musst sie NICHT angeben!
-
-- **ipv64:**  
-  - `auth_method`: `"token"`, `"basic"` oder `"bearer"`
-  - `token`: Dein Update-Token
-  - `domain`: Deine Domain bei ipv64.net
-  - **Hinweis:** Die URL ist im Code fest hinterlegt, du musst sie NICHT angeben!
-
-- **DynDNS2-kompatible Provider (DuckDNS, NoIP, Dynu, etc.):**  
-  - `url`: Update-URL (Pflicht!)
-  - `auth_method`: Optional, z.B. `"basic"` für Dynu
-  - `username`, `password`, `token`: Zugangsdaten je nach Provider
-  - **domain** oder **hostname**:  
-    - `domain`: Wird von DuckDNS und ipv64 erwartet (z.B. `"example"` oder `"deinedomain.ipv64.net"`)
-    - `hostname`: Wird von NoIP und Dynu erwartet (z.B. `"example.ddns.net"` oder `"deinedomain.dynu.net"`)
-    - `host`: Manche Provider erwarten diesen Namen – siehe deren API-Doku.
-
----
-
-## Authentifizierung (`auth_method`)
-
-### Beschreibung der Authentifizierungsmethoden
-
-- **token:**  
-  Das Token wird als Parameter (z.B. `key`, `token`) in der URL übergeben.
-  ```yaml
-  auth_method: "token"
-  token: "dein_token"
-  ```
-- **basic:**  
-  HTTP Basic Auth. Username und Passwort (oder Token) werden als HTTP-Auth-Header gesendet.
-  ```yaml
-  auth_method: "basic"
-  username: "deinuser"
-  password: "deinpass"
-  ```
-- **bearer:**  
-  Das Token wird als Bearer-Token im HTTP-Header gesendet.
-  ```yaml
-  auth_method: "bearer"
-  token: "dein_token"
-  ```
-- **Hinweis:**  
-  Die meisten DynDNS2-Provider (NoIP, Dynu, etc.) nutzen `basic`.  
-  DuckDNS und ipv64 nutzen meist `token`.
-
----
-
-## domain, hostname und host
-
-### Was ist der Unterschied?
-
-- **domain:**  
-  Wird meist für Anbieter wie DuckDNS oder ipv64 verwendet.  
-  Beispiel:  
-  ```yaml
-  domain: "example"  # DuckDNS
-  domain: "deinedomain.ipv64.net"  # ipv64
-  ```
-- **hostname:**  
-  Wird von klassischen DynDNS2-Providern wie NoIP oder Dynu verwendet.  
-  Beispiel:  
-  ```yaml
-  hostname: "example.ddns.net"  # NoIP
-  hostname: "deinedomain.dynu.net"  # Dynu
-  ```
-- **host:**  
-  Manche Provider (z.B. ältere DynDNS-Implementierungen) erwarten den Parameter als `host`.  
-  Dein Code prüft automatisch alle drei Felder und verwendet das, was in der Config steht.
-
-**Wichtig:**  
-- Immer das Feld verwenden, das der jeweilige Provider laut seiner API-Dokumentation verlangt!
-- Dein Code ist so gebaut, dass er automatisch das richtige Feld (`hostname`, `domain`, `host`) erkennt und verwendet.
-
----
-
-## Fehlerbehandlung
-
-- Existiert keine `config/config.yaml`, gibt der Container beim Start einen Fehler aus und beendet sich.
-- Fehlerhafte Konfigurationen werden beim Start und bei jeder Änderung erkannt und mit einer klaren Fehlermeldung im Log ausgegeben.
-
----
-
-## Mehr Details
-
-Siehe die ausführlichen Kommentare in `config.example.yaml` und die weiteren Abschnitte in dieser README für alle Optionen und Beispiele.
-
----
-
-## Beispiel für IPv6 (optional)
+### Provider Configuration
 
 ```yaml
-ip_service: "https://api.ipify.org"
-ip6_service: "https://api64.ipify.org"
+providers:
+  - name: duckdns
+    protocol: dyndns2
+    url: "https://www.duckdns.org/update"
+    token: "your-duckdns-token"
+    domain: "example"
+  - name: my-cloudflare
+    protocol: cloudflare
+    zone: "yourdomain.tld"
+    api_token: "your_cloudflare_api_token"
+    record_name: "sub.domain.tld"
+  # ...more providers, see config.example.yaml...
 ```
-Im Code wird dann automatisch auch die IPv6-Adresse abgefragt und an die Provider übergeben, die IPv6 unterstützen.
 
----
+### Notifications & Cooldown
 
-## Support & Mitmachen
-
-Pull Requests und Verbesserungen sind willkommen!  
-Bei Fragen oder Problemen bitte ein Issue auf GitHub eröffnen.
-
----
-
-### Nur IPv4, nur IPv6 oder beides aktualisieren
-
-Du kannst steuern, ob nur IPv4, nur IPv6 oder beide Adressen aktualisiert werden:
-
-- **Nur IPv4:**  
-  ```yaml
-  ip_service: "https://api.ipify.org"
-  ```
-- **Nur IPv6:**  
-  ```yaml
-  ip6_service: "https://api64.ipify.org"
-  ```
-- **Beides:**  
-  ```yaml
-  ip_service: "https://api.ipify.org"
-  ip6_service: "https://api64.ipify.org"
-  ```
-
-Wenn du einen der beiden Einträge weglässt, wird nur die jeweils angegebene Adresse aktualisiert.  
-**Hinweis:** Nicht alle Provider unterstützen IPv6!
-
----
-
-### Benachrichtigungs-Cooldown pro Dienst
-
-Du kannst für **jeden Notification-Dienst** einen eigenen Cooldown (in Minuten) setzen, um Benachrichtigungs-Spam zu vermeiden.  
-Nach einer Benachrichtigung wartet der jeweilige Dienst die angegebene Zeit, bevor wieder eine Nachricht gesendet wird.  
-Ist kein Wert gesetzt oder `0`, gibt es **keinen Cooldown** für diesen Dienst.
-
-Beispiel in der `config.yaml`:
+You can set an individual cooldown (in minutes) for **each notification service** to avoid notification spam.  
+After a notification, the respective service will wait the specified time before sending another message.  
+If no value or `0` is set, there is **no cooldown** for that service.
 
 ```yaml
 notify:
-  reset_cooldown_on_start: true  # Cooldown-Zähler wird beim Start zurückgesetzt
+  reset_cooldown_on_start: true  # Reset cooldown timers on container start
   ntfy:
     cooldown: 10
     enabled: true
-    url: "https://ntfy.sh/dein-topic"
+    url: "https://ntfy.sh/your-topic"
     notify_on: ["ERROR", "CRITICAL"]
   discord:
     cooldown: 30
@@ -335,49 +142,91 @@ notify:
     webhook_url: "https://discord.com/api/webhooks/..."
     notify_on: ["ERROR", "CRITICAL"]
   email:
-    cooldown: 0  # Kein Cooldown für E-Mail
+    cooldown: 0  # No cooldown for email
     enabled: true
-    # ...weitere Einstellungen...
+    # ...more settings...
 ```
 
-**Option:**  
-Mit  
+With  
 ```yaml
 reset_cooldown_on_start: true
 ```
-kannst du festlegen, dass beim Start des Containers alle Cooldown-Zähler zurückgesetzt werden.  
-Setze diese Option auf `false`, um den Cooldown auch nach einem Neustart weiterlaufen zu lassen.
+you can specify that all cooldown timers are reset when the container starts.  
+Set this option to `false` to let the cooldown continue after a restart.
 
-**Hinweis:**  
-- Die Cooldown-Zeit wird pro Dienst separat gespeichert.
-- Die Option `reset_cooldown_on_start` gilt für alle Dienste gemeinsam.
-- Nach einer Benachrichtigung wird der Cooldown für den jeweiligen Dienst gesetzt.
-
----
-
-### Provider-Update nur bei IP-Änderung
-
-
-
-
+**Note:**  
+- The cooldown time is stored separately for each service.
+- The `reset_cooldown_on_start` option applies to all services.
+- After a notification, the cooldown for the respective service is set.
 
 ---
 
-### Provider-Update beim Neustart nur bei IP-Änderung
+### Provider Update on Startup Only if IP Changed
 
-Mit der Option  
+With the option  
 ```yaml
 skip_update_on_startup: true
 ```
-in deiner `config.yaml` werden beim **Start des Containers** Provider-Updates **nur dann durchgeführt, wenn sich die öffentliche IP seit dem letzten Lauf geändert hat**.  
-Ist die IP gleich geblieben, werden keine unnötigen Updates gemacht.  
-Wenn die Option auf `false` steht oder fehlt, wird beim Start immer ein Update gemacht – unabhängig von der IP.
+in your `config.yaml`, provider updates are **only performed on container startup if the public IP has changed since the last run**.  
+If the IP is unchanged, no unnecessary updates are made.  
+If the option is set to `false` or missing, an update is always performed on startup—regardless of the IP.
 
-Die zuletzt bekannte IP wird im Container unter `/tmp` gespeichert.
+The last known IP is stored in the container under `/tmp`.
+
+**Note:**  
+- This option helps avoid unnecessary update requests if the IP has not changed.
+- Only works if the IP is fetched from an external service (like ipify).
 
 ---
 
-**Hinweis:**  
-- Diese Option kann nützlich sein, um unnötige Update-Anfragen zu vermeiden, wenn sich die IP nicht geändert hat.
-- Funktioniert nur, wenn die IP von einem externen Dienst (wie ipify) abgerufen wird.
+## Examples
+
+### Update only IPv4, only IPv6, or both
+
+- **Only IPv4:**  
+  ```yaml
+  ip_service: "https://api.ipify.org"
+  ```
+- **Only IPv6:**  
+  ```yaml
+  ip6_service: "https://api64.ipify.org"
+  ```
+- **Both:**  
+  ```yaml
+  ip_service: "https://api.ipify.org"
+  ip6_service: "https://api64.ipify.org"
+  ```
+
+If you omit one of the entries, only the specified address will be updated.  
+**Note:** Not all providers support IPv6!
+
+---
+
+## Error Handling & Tips
+
+- If `config/config.yaml` does not exist, the container will exit with an error.
+- Invalid configurations are detected at startup and on every change, with clear error messages in the log.
+- The last known IP is stored in `/tmp/last_ip_v4.txt` and `/tmp/last_ip_v6.txt`.
+
+---
+
+## Contributing & Support
+
+Pull requests and improvements are welcome!  
+For questions or issues, please open an issue on GitHub.
+
+---
+
+## License
+
+MIT License
+
+---
+
+## About
+
+This project was created with the help of **GitHub Copilot**.  
+If you find bugs or have suggestions, please open an issue in the repository!
+
+---
 
