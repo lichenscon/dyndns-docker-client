@@ -208,7 +208,7 @@ def update_dyndns2(provider, ip, ip6=None):
             params['myipv6'] = ip6
 
         auth, headers = build_auth_headers(provider)
-        if provider.get('auth_method', 'token', 'token') == "token":
+        if provider.get('auth_method', 'token') == "token":
             if 'key' in provider:
                 params['key'] = provider['key']
             elif 'user' in provider:
