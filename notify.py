@@ -3,34 +3,34 @@ import logging
 import smtplib
 from email.mime.text import MIMEText
 
-def notify_ntfy(url, message):
+def notify_ntfy(url, message, service_name=None):
     try:
         requests.post(url, data=message.encode("utf-8"), timeout=5)
     except Exception as e:
         logging.getLogger("NOTIFY").warning(f"ntfy-Notification fehlgeschlagen: {e}")
 
-def notify_discord(webhook_url, message):
+def notify_discord(webhook_url, message, service_name=None):
     try:
         data = {"content": message}
         requests.post(webhook_url, json=data, timeout=5)
     except Exception as e:
         logging.getLogger("NOTIFY").warning(f"Discord-Notification fehlgeschlagen: {e}")
 
-def notify_slack(webhook_url, message):
+def notify_slack(webhook_url, message, service_name=None):
     try:
         data = {"text": message}
         requests.post(webhook_url, json=data, timeout=5)
     except Exception as e:
         logging.getLogger("NOTIFY").warning(f"Slack-Notification fehlgeschlagen: {e}")
 
-def notify_webhook(url, message):
+def notify_webhook(url, message, service_name=None):
     try:
         data = {"message": message}
         requests.post(url, json=data, timeout=5)
     except Exception as e:
         logging.getLogger("NOTIFY").warning(f"Webhook-Notification fehlgeschlagen: {e}")
 
-def notify_telegram(bot_token, chat_id, message):
+def notify_telegram(bot_token, chat_id, message, service_name=None):
     try:
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         data = {"chat_id": chat_id, "text": message}
@@ -38,7 +38,7 @@ def notify_telegram(bot_token, chat_id, message):
     except Exception as e:
         logging.getLogger("NOTIFY").warning(f"Telegram-Notification fehlgeschlagen: {e}")
 
-def notify_email(cfg, subject, message):
+def notify_email(cfg, subject, message, service_name=None):
     try:
         msg = MIMEText(message)
         msg["Subject"] = subject
@@ -62,12 +62,13 @@ def notify_email(cfg, subject, message):
     except Exception as e:
         logging.getLogger("NOTIFY").warning(f"E-Mail-Notification fehlgeschlagen: {e}")
 
-def send_notifications(config, level, message, subject=None):
+def send_notifications(config, level, message, subject=None, service_name=None):
     """
     config: dict aus config.yaml['notify']
     level: z.B. "ERROR", "CRITICAL", "UPDATE"
     message: Textnachricht
     subject: Optionaler Betreff für E-Mail
+    service_name: Name des betroffenen Dienstes/Providers (optional)
     """
     if not config:
         return
@@ -75,29 +76,29 @@ def send_notifications(config, level, message, subject=None):
     # ntfy
     ntfy_cfg = config.get("ntfy")
     if ntfy_cfg and ntfy_cfg.get("enabled") and level in ntfy_cfg.get("notify_on", []):
-        notify_ntfy(ntfy_cfg["url"], message)
+        notify_ntfy(ntfy_cfg["url"], message, service_name)
 
     # Discord
     discord_cfg = config.get("discord")
     if discord_cfg and discord_cfg.get("enabled") and level in discord_cfg.get("notify_on", []):
-        notify_discord(discord_cfg["webhook_url"], message)
+        notify_discord(discord_cfg["webhook_url"], message, service_name)
 
     # Slack
     slack_cfg = config.get("slack")
     if slack_cfg and slack_cfg.get("enabled") and level in slack_cfg.get("notify_on", []):
-        notify_slack(slack_cfg["webhook_url"], message)
+        notify_slack(slack_cfg["webhook_url"], message, service_name)
 
     # Webhook
     webhook_cfg = config.get("webhook")
     if webhook_cfg and webhook_cfg.get("enabled") and level in webhook_cfg.get("notify_on", []):
-        notify_webhook(webhook_cfg["url"], message)
+        notify_webhook(webhook_cfg["url"], message, service_name)
 
     # Telegram
     telegram_cfg = config.get("telegram")
     if telegram_cfg and telegram_cfg.get("enabled") and level in telegram_cfg.get("notify_on", []):
-        notify_telegram(telegram_cfg["bot_token"], telegram_cfg["chat_id"], message)
+        notify_telegram(telegram_cfg["bot_token"], telegram_cfg["chat_id"], message, service_name)
 
     # Email
     email_cfg = config.get("email")
     if email_cfg and email_cfg.get("enabled") and level in email_cfg.get("notify_on", []):
-        notify_email(email_cfg, subject or "DynDNS Client Benachrichtigung", message)
+        notify_email(email_cfg, subject or "DynDNS Client Benachrichtigung", message, service_name)
