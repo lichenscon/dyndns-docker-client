@@ -357,16 +357,9 @@ Setze diese Option auf `false`, um den Cooldown auch nach einem Neustart weiterl
 
 ### Provider-Update nur bei IP-Änderung
 
-Mit der Option  
-```yaml
-skip_provider_update_on_same_ip: true
-```
-kannst du steuern, ob ein Provider-Update nur bei tatsächlicher IP-Änderung durchgeführt wird.  
-Ist die öffentliche IP gleich der zuletzt bekannten IP, wird das Update für diesen Provider übersprungen.
 
-**Hinweis:**  
-- Diese Option kann nützlich sein, um unnötige Update-Anfragen zu vermeiden, wenn sich die IP nicht geändert hat.
-- Funktioniert nur, wenn die IP von einem externen Dienst (wie ipify) abgerufen wird.
+
+
 
 ---
 
@@ -383,4 +376,8 @@ Wenn die Option auf `false` steht oder fehlt, wird beim Start immer ein Update g
 Die zuletzt bekannte IP wird im Container unter `/tmp` gespeichert.
 
 ---
+
+**Hinweis:**  
+- Diese Option kann nützlich sein, um unnötige Update-Anfragen zu vermeiden, wenn sich die IP nicht geändert hat.
+- Funktioniert nur, wenn die IP von einem externen Dienst (wie ipify) abgerufen wird.
 

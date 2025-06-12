@@ -356,6 +356,30 @@ def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
         send_notifications(config.get("notify"), "ERROR", message, "DynDNS Fehler", service_name=service_name)
         return False
 
+def load_last_ip(version):
+    """
+    Lädt die letzte erfolgreiche IP-Adresse aus der Datei.
+    """
+    try:
+        file_path = f"config/last_ip_v{version}.txt"
+        if os.path.exists(file_path):
+            with open(file_path, "r") as f:
+                return f.read().strip()
+    except Exception as e:
+        log(f"Fehler beim Laden der letzten IP (v{version}): {e}", "ERROR")
+    return None
+
+def save_last_ip(version, ip):
+    """
+    Speichert die aktuelle IP-Adresse in der Datei für die nächste Überprüfung.
+    """
+    try:
+        file_path = f"config/last_ip_v{version}.txt"
+        with open(file_path, "w") as f:
+            f.write(ip)
+    except Exception as e:
+        log(f"Fehler beim Speichern der letzten IP (v{version}): {e}", "ERROR")
+
 def main():
     global config
     config_path = 'config/config.yaml'
@@ -414,17 +438,33 @@ def main():
     if test_ip6:
         log(f"ip6_service erreichbar. Öffentliche IPv6: {test_ip6}", section="MAIN")
 
-    log("Starte Initial-Update-Durchlauf für alle Provider...", section="MAIN")
-    failed_providers = []
-    for provider in providers:
-        result = update_provider(provider, test_ip, test_ip6)
-        section = provider.get('name', 'PROVIDER').upper()
-        if not (result or result == "nochg"):
-            log(f"Provider '{provider.get('name')}' konnte initial nicht aktualisiert werden.", "WARNING", section=section)
-            failed_providers.append(provider)
+    skip_on_startup = config.get("skip_update_on_startup", False)
+    last_ip = load_last_ip("v4")
+    last_ip6 = load_last_ip("v6")
+    ip_changed = (test_ip != last_ip) if test_ip else False
+    ip6_changed = (test_ip6 != last_ip6) if test_ip6 else False
 
-    last_ip = test_ip
-    last_ip6 = test_ip6
+    if skip_on_startup and not ip_changed and not ip6_changed:
+        log("IP hat sich seit letztem Lauf nicht geändert. Keine Provider-Updates beim Start nötig.", "INFO", section="MAIN")
+        save_last_ip("v4", test_ip)
+        save_last_ip("v6", test_ip6)
+        last_ip = test_ip
+        last_ip6 = test_ip6
+    else:
+        log("Starte Initial-Update-Durchlauf für alle Provider...", section="MAIN")
+        failed_providers = []
+        for provider in providers:
+            result = update_provider(provider, test_ip, test_ip6)
+            section = provider.get('name', 'PROVIDER').upper()
+            if not (result or result == "nochg"):
+                log(f"Provider '{provider.get('name')}' konnte initial nicht aktualisiert werden.", "WARNING", section=section)
+                failed_providers.append(provider)
+
+        save_last_ip("v4", test_ip)
+        save_last_ip("v6", test_ip6)
+        last_ip = test_ip
+        last_ip6 = test_ip6
+
     elapsed = 0
     check_interval = 2  # Sekunden, wie oft auf Config-Änderung geprüft wird
 
