@@ -83,11 +83,6 @@ Start with:
 docker compose up -d
 ```
 
-> **Note:**  
-> **Lege deine `config.yaml` im lokalen `./config`-Verzeichnis ab!**
-> Ohne diese Datei startet der Container nicht korrekt.
-> Der Inhalt sollte sich an `config.example.yaml` orientieren.
-
 ---
 
 ## Configuration (`config/config.yaml`)
