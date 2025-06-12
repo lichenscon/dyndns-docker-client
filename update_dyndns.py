@@ -6,13 +6,17 @@ import yaml
 import logging
 from notify import send_notifications
 
+config = None  # global, damit update_provider darauf zugreifen kann
+
 def setup_logging(level_str):
     level = getattr(logging, level_str.upper(), logging.INFO)
-    logging.basicConfig(
-        level=level,
-        format='[%(levelname)s] %(name)s --> %(message)s',
-        handlers=[logging.StreamHandler()]
-    )
+    root = logging.getLogger()
+    for handler in root.handlers[:]:
+        root.removeHandler(handler)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter('[%(levelname)s] %(name)s --> %(message)s'))
+    root.addHandler(handler)
+    root.setLevel(level)
 
 def log(msg, level="INFO", section="MAIN"):
     logger = logging.getLogger(section)
@@ -308,9 +312,9 @@ def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
     """
     try:
         if provider.get("protocol") == "cloudflare":
-            result = update_cloudflare(provider, ip)
+            result = update_cloudflare(provider, ip, ip6)
             if result == "updated":
-                log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="CLOUDFLARE")
+                log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "INFO", section="CLOUDFLARE")
                 send_notifications(config.get("notify"), "UPDATE", "IP-Adresse wurde erfolgreich aktualisiert.", "DynDNS Update")
             elif result == "nochg":
                 if log_success_if_nochg:
@@ -322,7 +326,7 @@ def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
         if provider.get("protocol") == "ipv64":
             result = update_ipv64(provider, ip, ip6)
             if result == "updated":
-                log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="IPV64")
+                log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "INFO", section="IPV64")
                 send_notifications(config.get("notify"), "UPDATE", "IP-Adresse wurde erfolgreich aktualisiert.", "DynDNS Update")
             elif result == "nochg":
                 if log_success_if_nochg:
@@ -334,7 +338,7 @@ def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
         if provider.get("protocol") == "dyndns2":
             result = update_dyndns2(provider, ip, ip6)
             if result == "updated":
-                log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="DYNDNS2")
+                log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "INFO", section="DYNDNS2")
                 send_notifications(config.get("notify"), "UPDATE", "IP-Adresse wurde erfolgreich aktualisiert.", "DynDNS Update")
             elif result == "nochg":
                 if log_success_if_nochg:
@@ -349,6 +353,7 @@ def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
         return False
 
 def main():
+    global config
     config_path = 'config/config.yaml'
     if not os.path.exists(config_path):
         setup_logging("INFO")
