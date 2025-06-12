@@ -351,8 +351,16 @@ def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
                 send_notifications(config.get("notify"), "ERROR", "Update failed!", "DynDNS Error")
             return result == "updated" or (log_success_if_nochg and result == "nochg")
     except Exception as e:
-        log(f"Update for provider '{provider.get('name')}' failed: {e}", "ERROR", section=provider.get("name", "PROVIDER").upper())
-        send_notifications(config.get("notify"), "ERROR", "Update failed!", "DynDNS Error")
+        provider_name = provider.get("name", "PROVIDER")
+        error_msg = f"Update for provider '{provider_name}' failed: {e}"
+        log(error_msg, "ERROR", section=provider_name.upper())
+        send_notifications(
+            config.get("notify"),
+            "ERROR",
+            f"Update failed for provider '{provider_name}': {e}",
+            subject=f"DynDNS Error: {provider_name}",
+            service_name=provider_name
+        )
         return False
 
 def main():
