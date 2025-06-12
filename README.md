@@ -355,3 +355,32 @@ Setze diese Option auf `false`, um den Cooldown auch nach einem Neustart weiterl
 
 ---
 
+### Provider-Update nur bei IP-Änderung
+
+Mit der Option  
+```yaml
+skip_provider_update_on_same_ip: true
+```
+kannst du steuern, ob ein Provider-Update nur bei tatsächlicher IP-Änderung durchgeführt wird.  
+Ist die öffentliche IP gleich der zuletzt bekannten IP, wird das Update für diesen Provider übersprungen.
+
+**Hinweis:**  
+- Diese Option kann nützlich sein, um unnötige Update-Anfragen zu vermeiden, wenn sich die IP nicht geändert hat.
+- Funktioniert nur, wenn die IP von einem externen Dienst (wie ipify) abgerufen wird.
+
+---
+
+### Provider-Update beim Neustart nur bei IP-Änderung
+
+Mit der Option  
+```yaml
+skip_update_on_startup: true
+```
+in deiner `config.yaml` werden beim **Start des Containers** Provider-Updates **nur dann durchgeführt, wenn sich die öffentliche IP seit dem letzten Lauf geändert hat**.  
+Ist die IP gleich geblieben, werden keine unnötigen Updates gemacht.  
+Wenn die Option auf `false` steht oder fehlt, wird beim Start immer ein Update gemacht – unabhängig von der IP.
+
+Die zuletzt bekannte IP wird im Container unter `/tmp` gespeichert.
+
+---
+
