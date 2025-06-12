@@ -4,6 +4,7 @@ import time
 import requests
 import yaml
 import logging
+from notify import send_notifications
 
 def setup_logging(level_str):
     level = getattr(logging, level_str.upper(), logging.INFO)
@@ -310,34 +311,41 @@ def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
             result = update_cloudflare(provider, ip)
             if result == "updated":
                 log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="CLOUDFLARE")
+                send_notifications(config.get("notify"), "UPDATE", "IP-Adresse wurde erfolgreich aktualisiert.", "DynDNS Update")
             elif result == "nochg":
                 if log_success_if_nochg:
                     log(f"Provider '{provider.get('name')}' war bereits aktuell, kein Update durchgeführt.", "INFO", section="CLOUDFLARE")
             else:
                 log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section="CLOUDFLARE")
+                send_notifications(config.get("notify"), "ERROR", "Update fehlgeschlagen!", "DynDNS Fehler")
             return result == "updated" or (log_success_if_nochg and result == "nochg")
         if provider.get("protocol") == "ipv64":
             result = update_ipv64(provider, ip, ip6)
             if result == "updated":
                 log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="IPV64")
+                send_notifications(config.get("notify"), "UPDATE", "IP-Adresse wurde erfolgreich aktualisiert.", "DynDNS Update")
             elif result == "nochg":
                 if log_success_if_nochg:
                     log(f"Provider '{provider.get('name')}' war bereits aktuell, kein Update durchgeführt.", "INFO", section="IPV64")
             else:
                 log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section="IPV64")
+                send_notifications(config.get("notify"), "ERROR", "Update fehlgeschlagen!", "DynDNS Fehler")
             return result == "updated" or (log_success_if_nochg and result == "nochg")
         if provider.get("protocol") == "dyndns2":
             result = update_dyndns2(provider, ip, ip6)
             if result == "updated":
                 log(f"Provider '{provider.get('name')}' erfolgreich aktualisiert.", "SUCCESS", section="DYNDNS2")
+                send_notifications(config.get("notify"), "UPDATE", "IP-Adresse wurde erfolgreich aktualisiert.", "DynDNS Update")
             elif result == "nochg":
                 if log_success_if_nochg:
                     log(f"Provider '{provider.get('name')}' war bereits aktuell, kein Update durchgeführt.", "INFO", section="DYNDNS2")
             else:
                 log(f"Provider '{provider.get('name')}' konnte nicht aktualisiert werden.", "ERROR", section="DYNDNS2")
+                send_notifications(config.get("notify"), "ERROR", "Update fehlgeschlagen!", "DynDNS Fehler")
             return result == "updated" or (log_success_if_nochg and result == "nochg")
     except Exception as e:
         log(f"Update für Provider '{provider.get('name')}' fehlgeschlagen: {e}", "ERROR", section=provider.get("name", "PROVIDER").upper())
+        send_notifications(config.get("notify"), "ERROR", "Update fehlgeschlagen!", "DynDNS Fehler")
         return False
 
 def main():

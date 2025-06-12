@@ -13,57 +13,121 @@ ip_service: "https://api.ipify.org"
 # Service zum Abrufen der öffentlichen IPv6-Adresse (optional)
 # ip6_service: "https://api64.ipify.org"
 
+# Benachrichtigungen (alle Optionen, alles optional)
+notify:
+  # E-Mail
+  email:
+    enabled: false
+    to: "dein@email.tld"
+    from: "dyndns-bot@email.tld"
+    smtp_server: "smtp.example.com"
+    smtp_port: 587           # Standard: 587 (STARTTLS), 465 (SSL), 25 (kein SSL)
+    smtp_ssl: false          # true = SSL (Port 465), false = kein SSL/STARTTLS
+    smtp_starttls: true      # true = STARTTLS (Port 587), false = kein STARTTLS
+    smtp_user: "smtp-user"
+    smtp_pass: "smtp-pass"
+    notify_on: ["ERROR", "CRITICAL", "UPDATE"]
+
+  # ntfy Push
+  ntfy:
+    enabled: false
+    url: "https://ntfy.sh/dein-topic"
+    notify_on: ["ERROR", "CRITICAL"]
+
+  # Webhook (z.B. für eigene HTTP-Services)
+  webhook:
+    enabled: false
+    url: "https://your-webhook-service"
+    notify_on: ["ERROR", "CRITICAL", "UPDATE"]
+
+  # Telegram
+  telegram:
+    enabled: false
+    bot_token: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+    chat_id: "123456789"
+    notify_on: ["ERROR", "CRITICAL"]
+
+  # Discord
+  discord:
+    enabled: false
+    webhook_url: "https://discord.com/api/webhooks/..."
+    notify_on: ["ERROR", "CRITICAL"]
+
+  # Slack
+  slack:
+    enabled: false
+    webhook_url: "https://hooks.slack.com/services/..."
+    notify_on: ["ERROR", "CRITICAL"]
+
 # Liste der zu aktualisierenden Provider
-providers: 
-# ACHTUNG: Dieses Feld darf NICHT entfernt oder auskommentiert werden!
-# Trage hier deine Provider ein, siehe Beispiele unten.
+providers:
+  # DuckDNS Beispiel
+  - name: duckdns
+    protocol: dyndns2
+    url: "https://www.duckdns.org/update"
+    token: "your-duckdns-token"
+    domain: "example"  # DuckDNS erwartet 'domain'
 
-#   - name: duckdns
-#     protocol: dyndns2
-#     url: "https://www.duckdns.org/update"
-#     token: "your-duckdns-token"
-#     domain: "example"  # DuckDNS erwartet 'domain'
+  # NoIP Beispiel
+  - name: noip-home
+    protocol: dyndns2
+    url: "https://dynupdate.no-ip.com/nic/update"
+    username: "your-noip-username"
+    password: "your-noip-password"
+    hostname: "example.ddns.net"  # NoIP erwartet 'hostname'
 
-#   - name: noip-home
-#     protocol: dyndns2
-#     url: "https://dynupdate.no-ip.com/nic/update"
-#     username: "your-noip-username"
-#     password: "your-noip-password"
-#     hostname: "example.ddns.net"  # NoIP erwartet 'hostname'
+  # Dynu Beispiel
+  - name: dynu
+    protocol: dyndns2
+    url: "https://api.dynu.com/nic/update"
+    auth_method: "basic"
+    username: "deinuser"
+    password: "deinpass"
+    hostname: "deinedomain.dynu.net"  # Dynu erwartet 'hostname'
 
-#   - name: dynu
-#     protocol: dyndns2
-#     url: "https://api.dynu.com/nic/update"
-#     auth_method: "basic"
-#     username: "deinuser"
-#     password: "deinpass"
-#     hostname: "deinedomain.dynu.net"  # Dynu erwartet 'hostname'
+  # Cloudflare Beispiel (IPv4 und IPv6)
+  - name: mein-cloudflare
+    protocol: cloudflare
+    zone: "deinedomain.tld"
+    api_token: "dein_cloudflare_api_token"
+    record_name: "sub.domain.tld"
 
-#   - name: mein-cloudflare
-#     protocol: cloudflare
-#     zone: "deinedomain.tld"
-#     api_token: "dein_cloudflare_api_token"
-#     record_name: "sub.domain.tld"
+  # ipv64.net Beispiel (Token)
+  - name: mein-ipv64
+    protocol: ipv64
+    # url ist NICHT nötig für ipv64, wird im Code fest gesetzt!
+    auth_method: "token"  # oder "basic" oder "bearer"
+    token: "dein_update_token"
+    domain: "deinedomain.ipv64.net"
 
-#   - name: mein-ipv64
-#     protocol: ipv64
-#     # url ist NICHT nötig für ipv64, wird im Code fest gesetzt!
-#     auth_method: "token"  # oder "basic" oder "bearer"
-#     token: "dein_update_token"
-#     domain: "deinedomain.ipv64.net"
+  # ipv64.net Beispiel (Basic Auth)
+  - name: mein-ipv64-basic
+    protocol: ipv64
+    auth_method: "basic"
+    token: "dein_update_token"
+    domain: "deinedomain.ipv64.net"
 
-#   - name: beispiel-bearer
-#     protocol: dyndns2
-#     url: "https://example.com/nic/update"
-#     auth_method: "bearer"
-#     token: "dein_bearer_token"
-#     hostname: "deinhost.example.com"
+  # ipv64.net Beispiel (Bearer Auth)
+  - name: mein-ipv64-bearer
+    protocol: ipv64
+    auth_method: "bearer"
+    token: "dein_update_token"
+    domain: "deinedomain.ipv64.net"
 
-#   - name: beispiel-mit-host
-#     protocol: dyndns2
-#     url: "https://example.com/nic/update"
-#     token: "dein_token"
-#     host: "deinhost.example.com"
+  # dyndns2 Beispiel mit Bearer Auth
+  - name: beispiel-bearer
+    protocol: dyndns2
+    url: "https://example.com/nic/update"
+    auth_method: "bearer"
+    token: "dein_bearer_token"
+    hostname: "deinhost.example.com"
+
+  # dyndns2 Beispiel mit host statt hostname/domain
+  - name: beispiel-mit-host
+    protocol: dyndns2
+    url: "https://example.com/nic/update"
+    token: "dein_token"
+    host: "deinhost.example.com"
 
 # Hinweise:
 # - Für dyndns2-Provider ist das Feld 'url' Pflicht!
