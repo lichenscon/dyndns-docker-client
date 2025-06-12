@@ -313,6 +313,14 @@ def build_auth_headers(provider):
         headers['Authorization'] = f"Bearer {token}"
     return auth, headers
 
+def log_update_result(provider_name, service_name, result, error_text=None):
+    if result == "updated":
+        log(f"Provider '{provider_name}' erfolgreich aktualisiert.", "INFO", section=service_name)
+    elif result == "nochg":
+        log(f"Provider '{provider_name}' war bereits aktuell, kein Update durchgeführt.", "INFO", section=service_name)
+    else:
+        log(f"Provider '{provider_name}' konnte nicht aktualisiert werden. Fehler: {error_text}", "ERROR", section=service_name)
+
 def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
     """
     Wählt anhand des Protokolls die passende Update-Funktion für den Provider.
