@@ -56,10 +56,6 @@ docker run -u 1000:1000 \
   -v $(pwd)/config/config.yaml:/app/config/config.yaml \
   alexfl1987/dyndns:latest-stable
 ```
-
-> **Hinweis:**  
-> Existiert keine `config/config.yaml`, gibt der Container beim Start einen Fehler aus.
-
 ---
 
 ### Docker Compose Beispiel
