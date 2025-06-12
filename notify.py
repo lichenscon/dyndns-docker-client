@@ -3,50 +3,44 @@ import logging
 import smtplib
 from email.mime.text import MIMEText
 
-def notify_ntfy(url, message, service_name=None):
+def notify_ntfy(url, message):
     try:
-        msg = f"[{service_name}] {message}" if service_name else message
-        requests.post(url, data=msg.encode("utf-8"), timeout=5)
+        requests.post(url, data=message.encode("utf-8"), timeout=5)
     except Exception as e:
         logging.getLogger("NOTIFY").warning(f"ntfy-Notification fehlgeschlagen: {e}")
 
-def notify_discord(webhook_url, message, service_name=None):
+def notify_discord(webhook_url, message):
     try:
-        msg = f"[{service_name}] {message}" if service_name else message
-        data = {"content": msg}
+        data = {"content": message}
         requests.post(webhook_url, json=data, timeout=5)
     except Exception as e:
         logging.getLogger("NOTIFY").warning(f"Discord-Notification fehlgeschlagen: {e}")
 
-def notify_slack(webhook_url, message, service_name=None):
+def notify_slack(webhook_url, message):
     try:
-        msg = f"[{service_name}] {message}" if service_name else message
-        data = {"text": msg}
+        data = {"text": message}
         requests.post(webhook_url, json=data, timeout=5)
     except Exception as e:
         logging.getLogger("NOTIFY").warning(f"Slack-Notification fehlgeschlagen: {e}")
 
-def notify_webhook(url, message, service_name=None):
+def notify_webhook(url, message):
     try:
-        msg = f"[{service_name}] {message}" if service_name else message
-        data = {"message": msg}
+        data = {"message": message}
         requests.post(url, json=data, timeout=5)
     except Exception as e:
         logging.getLogger("NOTIFY").warning(f"Webhook-Notification fehlgeschlagen: {e}")
 
-def notify_telegram(bot_token, chat_id, message, service_name=None):
+def notify_telegram(bot_token, chat_id, message):
     try:
-        msg = f"[{service_name}] {message}" if service_name else message
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-        data = {"chat_id": chat_id, "text": msg}
+        data = {"chat_id": chat_id, "text": message}
         requests.post(url, data=data, timeout=5)
     except Exception as e:
         logging.getLogger("NOTIFY").warning(f"Telegram-Notification fehlgeschlagen: {e}")
 
-def notify_email(cfg, subject, message, service_name=None):
+def notify_email(cfg, subject, message):
     try:
-        msg_text = f"[{service_name}] {message}" if service_name else message
-        msg = MIMEText(msg_text)
+        msg = MIMEText(message)
         msg["Subject"] = subject
         msg["From"] = cfg["from"]
         msg["To"] = cfg["to"]
@@ -68,7 +62,7 @@ def notify_email(cfg, subject, message, service_name=None):
     except Exception as e:
         logging.getLogger("NOTIFY").warning(f"E-Mail-Notification fehlgeschlagen: {e}")
 
-def send_notifications(config, level, message, subject=None):
+def send_notifications(config, level, message, subject=None, service_name=None):
     """
     config: dict aus config.yaml['notify']
     level: z.B. "ERROR", "CRITICAL", "UPDATE"
