@@ -3,50 +3,82 @@ import logging
 import smtplib
 from email.mime.text import MIMEText
 
-def notify_ntfy(url, message):
-    try:
-        requests.post(url, data=message.encode("utf-8"), timeout=5)
-    except Exception as e:
-        logging.getLogger("NOTIFY").warning(f"ntfy-Notification fehlgeschlagen: {e}")
+def human_error_message(e, context=""):
+    err_str = str(e)
+    if "[Errno -2]" in err_str:
+        return f"{context} fehlgeschlagen: Hostname nicht gefunden (DNS-Problem oder Tippfehler im Servernamen)."
+    elif "[Errno 111]" in err_str:
+        return f"{context} fehlgeschlagen: Verbindung abgelehnt (Server nicht erreichbar oder falscher Port)."
+    elif "[Errno 110]" in err_str:
+        return f"{context} fehlgeschlagen: Timeout beim Verbindungsaufbau."
+    elif "Name or service not known" in err_str:
+        return f"{context} fehlgeschlagen: Hostname nicht gefunden (DNS-Problem oder Tippfehler im Servernamen)."
+    else:
+        return f"{context} fehlgeschlagen: {e}"
 
-def notify_discord(webhook_url, message):
+def notify_ntfy(url, message, service_name=None):
     try:
-        data = {"content": message}
+        msg = f"[{service_name}] {message}" if service_name else message
+        requests.post(url, data=msg.encode("utf-8"), timeout=5)
+    except Exception as e:
+        logging.getLogger("NOTIFY").warning(human_error_message(e, "ntfy-Notification"))
+
+def notify_discord(webhook_url, message, service_name=None):
+    try:
+        msg = f"[{service_name}] {message}" if service_name else message
+        data = {"content": msg}
         requests.post(webhook_url, json=data, timeout=5)
     except Exception as e:
-        logging.getLogger("NOTIFY").warning(f"Discord-Notification fehlgeschlagen: {e}")
+        logging.getLogger("NOTIFY").warning(human_error_message(e, "Discord-Notification"))
 
-def notify_slack(webhook_url, message):
+def notify_slack(webhook_url, message, service_name=None):
     try:
-        data = {"text": message}
+        msg = f"[{service_name}] {message}" if service_name else message
+        data = {"text": msg}
         requests.post(webhook_url, json=data, timeout=5)
     except Exception as e:
-        logging.getLogger("NOTIFY").warning(f"Slack-Notification fehlgeschlagen: {e}")
+        logging.getLogger("NOTIFY").warning(human_error_message(e, "Slack-Notification"))
 
-def notify_webhook(url, message):
+def notify_webhook(url, message, service_name=None):
     try:
-        data = {"message": message}
+        msg = f"[{service_name}] {message}" if service_name else message
+        data = {"message": msg}
         requests.post(url, json=data, timeout=5)
     except Exception as e:
-        logging.getLogger("NOTIFY").warning(f"Webhook-Notification fehlgeschlagen: {e}")
+        logging.getLogger("NOTIFY").warning(human_error_message(e, "Webhook-Notification"))
 
-def notify_telegram(bot_token, chat_id, message):
+def notify_telegram(bot_token, chat_id, message, service_name=None):
     try:
+        msg = f"[{service_name}] {message}" if service_name else message
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-        data = {"chat_id": chat_id, "text": message}
+        data = {"chat_id": chat_id, "text": msg}
         requests.post(url, data=data, timeout=5)
     except Exception as e:
-        logging.getLogger("NOTIFY").warning(f"Telegram-Notification fehlgeschlagen: {e}")
+        logging.getLogger("NOTIFY").warning(human_error_message(e, "Telegram-Notification"))
 
-def notify_email(cfg, subject, message):
+def notify_email(cfg, subject, message, service_name=None):
     try:
-        msg = MIMEText(message)
+        msg_text = f"[{service_name}] {message}" if service_name else message
+        msg = MIMEText(msg_text)
         msg["Subject"] = subject
         msg["From"] = cfg["from"]
         msg["To"] = cfg["to"]
         port = cfg.get("smtp_port", 587)
-        use_ssl = cfg.get("smtp_ssl", False)
-        use_starttls = cfg.get("smtp_starttls", True)
+        # Automatische Port-Logik
+        if "smtp_ssl" in cfg:
+            use_ssl = cfg["smtp_ssl"]
+        elif port == 465:
+            use_ssl = True
+        else:
+            use_ssl = False
+
+        if "smtp_starttls" in cfg:
+            use_starttls = cfg["smtp_starttls"]
+        elif port == 587:
+            use_starttls = True
+        else:
+            use_starttls = False
+
         if use_ssl:
             with smtplib.SMTP_SSL(cfg["smtp_server"], port) as server:
                 if cfg.get("smtp_user") and cfg.get("smtp_pass"):
@@ -60,7 +92,7 @@ def notify_email(cfg, subject, message):
                     server.login(cfg["smtp_user"], cfg["smtp_pass"])
                 server.sendmail(cfg["from"], [cfg["to"]], msg.as_string())
     except Exception as e:
-        logging.getLogger("NOTIFY").warning(f"E-Mail-Notification fehlgeschlagen: {e}")
+        logging.getLogger("NOTIFY").warning(human_error_message(e, "E-Mail-Notification"))
 
 def send_notifications(config, level, message, subject=None, service_name=None):
     """
