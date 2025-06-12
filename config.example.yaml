@@ -18,7 +18,7 @@ notify:
 # Bei notify_on: gibt es mehrere möglichkeiten:     notify_on: ["ERROR", "CRITICAL", "UPDATE"]
   # E-Mail
   email:
-    enabled: false
+    enabled: enable
     to: "dein@email.tld"
     from: "dyndns-bot@email.tld"
     smtp_server: "smtp.example.com"
@@ -31,32 +31,32 @@ notify:
 
   # ntfy Push
   ntfy:
-    enabled: false
+    enabled: enable
     url: "https://ntfy.sh/dein-topic"
     notify_on: ["ERROR", "CRITICAL"]
 
   # Webhook (z.B. für eigene HTTP-Services)
   webhook:
-    enabled: false
+    enabled: enable
     url: "https://your-webhook-service"
     notify_on: ["ERROR", "CRITICAL", "UPDATE"]
 
   # Telegram
   telegram:
-    enabled: false
+    enabled: enable
     bot_token: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
     chat_id: "123456789"
     notify_on: ["ERROR", "CRITICAL"]
 
   # Discord
   discord:
-    enabled: false
+    enabled: enable
     webhook_url: "https://discord.com/api/webhooks/..."
     notify_on: ["ERROR", "CRITICAL"]
 
   # Slack
   slack:
-    enabled: false
+    enabled: enable
     webhook_url: "https://hooks.slack.com/services/..."
     notify_on: ["ERROR", "CRITICAL"]
 
