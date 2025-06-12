@@ -4,6 +4,9 @@
 # Intervall in Sekunden für die IP-Prüfung (z.B. alle 5 Minuten)
 timer: 300
 
+# Protokollierungsstufe
+loglevel: INFO   # Mögliche Werte: DEBUG, INFO, WARNING, ERROR, CRITICAL
+
 # Service zum Abrufen der öffentlichen IPv4-Adresse
 ip_service: "https://api.ipify.org"
 

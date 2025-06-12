@@ -3,12 +3,31 @@ import os
 import time
 import requests
 import yaml
+import logging
+
+def setup_logging(level_str):
+    level = getattr(logging, level_str.upper(), logging.INFO)
+    logging.basicConfig(
+        level=level,
+        format='[%(levelname)s] %(name)s --> %(message)s',
+        handlers=[logging.StreamHandler()]
+    )
 
 def log(msg, level="INFO", section="MAIN"):
-    """
-    Gibt eine formatierte Log-Nachricht auf der Konsole aus.
-    """
-    print(f"[{level}] {section} --> {msg}", flush=True)
+    logger = logging.getLogger(section)
+    level = level.upper()
+    if level == "DEBUG":
+        logger.debug(msg)
+    elif level == "INFO":
+        logger.info(msg)
+    elif level == "WARNING":
+        logger.warning(msg)
+    elif level == "ERROR":
+        logger.error(msg)
+    elif level == "CRITICAL":
+        logger.critical(msg)
+    else:
+        logger.info(msg)
 
 def get_public_ip(ip_service):
     """
@@ -58,41 +77,82 @@ def get_cloudflare_record_id(api_token, zone_id, record_name):
         return data["result"][0]["id"]
     raise Exception(f"DNS-Record-ID für {record_name} nicht gefunden: {data}")
 
-def update_cloudflare(provider, ip):
+def update_cloudflare(provider, ip, ip6=None):
     """
-    Aktualisiert einen A-Record bei Cloudflare, falls die IP sich geändert hat.
+    Aktualisiert einen A- und ggf. AAAA-Record bei Cloudflare, falls sich die IP geändert hat.
     Gibt "updated", "nochg" oder False zurück.
     """
     api_token = provider['api_token']
     zone = provider['zone']
     record_name = provider['record_name']
     zone_id = get_cloudflare_zone_id(api_token, zone)
-    record_id = get_cloudflare_record_id(api_token, zone_id, record_name)
-    # Hole aktuellen Record
-    url_get = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record_id}"
     headers = {
         "Authorization": f"Bearer {api_token}",
         "Content-Type": "application/json"
     }
-    resp_get = requests.get(url_get, headers=headers)
-    data = resp_get.json()
-    log(f"Cloudflare GET response: {data}", section="CLOUDFLARE")  # <--- Ergänzt
-    if data.get("success") and data["result"]:
-        current_content = data["result"]["content"]
-        if current_content == ip:
-            log(f"Kein Update notwendig (IP bereits gesetzt: {ip}).", "INFO", section="CLOUDFLARE")
-            return "nochg"
-    # Update durchführen
-    url_patch = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record_id}"
-    data_patch = {
-        "type": "A",
-        "name": record_name,
-        "content": ip
-    }
-    resp_patch = requests.patch(url_patch, json=data_patch, headers=headers)
-    log(f"Cloudflare PATCH response: {resp_patch.text}", section="CLOUDFLARE")  # <--- Ergänzt
-    if resp_patch.ok:
+
+    updated = False
+    nochg = True
+
+    # --- IPv4 (A-Record) ---
+    if ip:
+        # Hole Record-ID für A-Record
+        url_a = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records?name={record_name}&type=A"
+        resp_a = requests.get(url_a, headers=headers)
+        data_a = resp_a.json()
+        log(f"Cloudflare GET A response: {data_a}", section="CLOUDFLARE")
+        if data_a.get("success") and data_a["result"]:
+            record_a = data_a["result"][0]
+            if record_a["content"] == ip:
+                log(f"Kein Update notwendig (IPv4 bereits gesetzt: {ip}).", "INFO", section="CLOUDFLARE")
+            else:
+                # Update A-Record
+                url_patch = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record_a['id']}"
+                data_patch = {
+                    "type": "A",
+                    "name": record_name,
+                    "content": ip
+                }
+                resp_patch = requests.patch(url_patch, json=data_patch, headers=headers)
+                log(f"Cloudflare PATCH A response: {resp_patch.text}", section="CLOUDFLARE")
+                if resp_patch.ok:
+                    updated = True
+                    nochg = False
+        else:
+            log(f"A-Record {record_name} nicht gefunden oder Fehler: {data_a}", "ERROR", section="CLOUDFLARE")
+            nochg = False
+
+    # --- IPv6 (AAAA-Record) ---
+    if ip6:
+        url_aaaa = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records?name={record_name}&type=AAAA"
+        resp_aaaa = requests.get(url_aaaa, headers=headers)
+        data_aaaa = resp_aaaa.json()
+        log(f"Cloudflare GET AAAA response: {data_aaaa}", section="CLOUDFLARE")
+        if data_aaaa.get("success") and data_aaaa["result"]:
+            record_aaaa = data_aaaa["result"][0]
+            if record_aaaa["content"] == ip6:
+                log(f"Kein Update notwendig (IPv6 bereits gesetzt: {ip6}).", "INFO", section="CLOUDFLARE")
+            else:
+                # Update AAAA-Record
+                url_patch = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record_aaaa['id']}"
+                data_patch = {
+                    "type": "AAAA",
+                    "name": record_name,
+                    "content": ip6
+                }
+                resp_patch = requests.patch(url_patch, json=data_patch, headers=headers)
+                log(f"Cloudflare PATCH AAAA response: {resp_patch.text}", section="CLOUDFLARE")
+                if resp_patch.ok:
+                    updated = True
+                    nochg = False
+        else:
+            log(f"AAAA-Record {record_name} nicht gefunden oder Fehler: {data_aaaa}", "ERROR", section="CLOUDFLARE")
+            nochg = False
+
+    if updated:
         return "updated"
+    if nochg:
+        return "nochg"
     return False
 
 def update_ipv64(provider, ip, ip6=None):
@@ -281,42 +341,45 @@ def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
         return False
 
 def main():
-    log("DynDNS Client startet...", section="MAIN")
     config_path = 'config/config.yaml'
     if not os.path.exists(config_path):
-        log(
-            "config/config.yaml nicht gefunden! Bitte eigene Konfiguration bereitstellen oder config.example.yaml kopieren.\n"
+        setup_logging("INFO")
+        log("config/config.yaml nicht gefunden! Bitte eigene Konfiguration bereitstellen oder config.example.yaml kopieren.\n"
             "Siehe Anleitung im Repository: https://github.com/alex-1987/dyndns-docker-client\n"
             "Beispiel für Docker Compose:\n"
             "  volumes:\n"
             "    - ./config:/app/config\n"
             "und lege deine config.yaml in das Verzeichnis ./config auf dem Host.",
-            "ERROR"
+            "CRITICAL"
         )
         sys.exit(1)
-    last_config_mtime = os.path.getmtime(config_path)
     with open(config_path, 'r') as f:
         try:
             config = yaml.safe_load(f)
         except Exception as e:
-            log(f"Fehler beim Laden der config.yaml: {e}\nSiehe Beispiel und Hinweise im Repository: https://github.com/alex-1987/dyndns-docker-client", "ERROR")
+            setup_logging("INFO")
+            log(f"Fehler beim Laden der config.yaml: {e}", "ERROR")
             sys.exit(1)
+    # Setze Logging-Level aus Config (Default: INFO)
+    loglevel = config.get("loglevel", "INFO")
+    setup_logging(loglevel)
+    last_config_mtime = os.path.getmtime(config_path)
     if not config or not isinstance(config, dict):
         log(
             "config.yaml ist leer oder ungültig! Bitte prüfe die Datei und orientiere dich an config.example.yaml.\n"
             "Siehe Anleitung im Repository: https://github.com/alex-1987/dyndns-docker-client",
-            "ERROR"
+            "CRITICAL"
         )
         sys.exit(1)
     if "providers" not in config or not isinstance(config["providers"], list) or not config["providers"]:
         log(
             "config.yaml enthält keine Provider! Bitte trage mindestens einen Provider unter 'providers:' ein.\n"
             "Siehe Anleitung und Beispiele im Repository: https://github.com/alex-1987/dyndns-docker-client",
-            "ERROR"
+            "CRITICAL"
         )
         sys.exit(1)
     if not validate_config(config):
-        log("Konfiguration ungültig. Programm wird beendet.", "ERROR")
+        log("Konfiguration ungültig. Programm wird beendet.", "CRITICAL")
         sys.exit(1)
     timer = config.get('timer', 300)
     ip_service = config.get('ip_service', 'https://api.ipify.org')
@@ -327,7 +390,7 @@ def main():
     test_ip = get_public_ip(ip_service) if ip_service else None
     test_ip6 = get_public_ipv6(ip6_service) if ip6_service else None
     if not test_ip and not test_ip6:
-        log("Programm wird beendet, da weder ip_service noch ip6_service erreichbar ist.", "ERROR")
+        log("Programm wird beendet, da weder ip_service noch ip6_service erreichbar ist.", "CRITICAL")
         return
     if test_ip:
         log(f"ip_service erreichbar. Öffentliche IP: {test_ip}", section="MAIN")
@@ -339,9 +402,8 @@ def main():
     for provider in providers:
         result = update_provider(provider, test_ip, test_ip6)
         section = provider.get('name', 'PROVIDER').upper()
-        # Entfernt: Initial erfolgreich geprüft-Log
         if not (result or result == "nochg"):
-            log(f"Provider '{provider.get('name')}' konnte initial nicht aktualisiert werden.", "ERROR", section=section)
+            log(f"Provider '{provider.get('name')}' konnte initial nicht aktualisiert werden.", "WARNING", section=section)
             failed_providers.append(provider)
 
     last_ip = test_ip
@@ -360,7 +422,11 @@ def main():
         if current_mtime != last_config_mtime:
             log("Änderung an config.yaml erkannt. Lade neue Konfiguration und starte einen neuen Durchlauf.", section="MAIN")
             with open(config_path, 'r') as f:
-                config = yaml.safe_load(f)
+                try:
+                    config = yaml.safe_load(f)
+                except Exception as e:
+                    log(f"Fehler beim Laden der config.yaml nach Änderung: {e}\nBitte prüfe die Datei und orientiere dich an config.example.yaml.", "ERROR")
+                    continue
             if not validate_config(config):
                 log("Konfiguration ungültig nach Änderung. Warte auf nächste Änderung...", "ERROR")
                 continue
@@ -379,9 +445,8 @@ def main():
             for provider in providers:
                 result = update_provider(provider, current_ip, current_ip6)
                 section = provider.get('name', 'PROVIDER').upper()
-                # Entfernt: nach Config-Änderung erfolgreich geprüft-Log
                 if not (result or result == "nochg"):
-                    log(f"Provider '{provider.get('name')}' konnte nach Config-Änderung nicht aktualisiert werden.", "ERROR", section=section)
+                    log(f"Provider '{provider.get('name')}' konnte nach Config-Änderung nicht aktualisiert werden.", "WARNING", section=section)
                     failed_providers.append(provider)
             last_ip = current_ip
             last_ip6 = current_ip6
