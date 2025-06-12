@@ -311,3 +311,47 @@ Du kannst steuern, ob nur IPv4, nur IPv6 oder beide Adressen aktualisiert werden
 Wenn du einen der beiden Einträge weglässt, wird nur die jeweils angegebene Adresse aktualisiert.  
 **Hinweis:** Nicht alle Provider unterstützen IPv6!
 
+---
+
+### Benachrichtigungs-Cooldown pro Dienst
+
+Du kannst für **jeden Notification-Dienst** einen eigenen Cooldown (in Minuten) setzen, um Benachrichtigungs-Spam zu vermeiden.  
+Nach einer Benachrichtigung wartet der jeweilige Dienst die angegebene Zeit, bevor wieder eine Nachricht gesendet wird.  
+Ist kein Wert gesetzt oder `0`, gibt es **keinen Cooldown** für diesen Dienst.
+
+Beispiel in der `config.yaml`:
+
+```yaml
+notify:
+  reset_cooldown_on_start: true  # Cooldown-Zähler wird beim Start zurückgesetzt
+  ntfy:
+    cooldown: 10
+    enabled: true
+    url: "https://ntfy.sh/dein-topic"
+    notify_on: ["ERROR", "CRITICAL"]
+  discord:
+    cooldown: 30
+    enabled: true
+    webhook_url: "https://discord.com/api/webhooks/..."
+    notify_on: ["ERROR", "CRITICAL"]
+  email:
+    cooldown: 0  # Kein Cooldown für E-Mail
+    enabled: true
+    # ...weitere Einstellungen...
+```
+
+**Option:**  
+Mit  
+```yaml
+reset_cooldown_on_start: true
+```
+kannst du festlegen, dass beim Start des Containers alle Cooldown-Zähler zurückgesetzt werden.  
+Setze diese Option auf `false`, um den Cooldown auch nach einem Neustart weiterlaufen zu lassen.
+
+**Hinweis:**  
+- Die Cooldown-Zeit wird pro Dienst separat gespeichert.
+- Die Option `reset_cooldown_on_start` gilt für alle Dienste gemeinsam.
+- Nach einer Benachrichtigung wird der Cooldown für den jeweiligen Dienst gesetzt.
+
+---
+

@@ -15,10 +15,11 @@ ip_service: "https://api.ipify.org"
 
 # Benachrichtigungen (alle Optionen, alles optional)
 notify:
-# Bei notify_on: gibt es mehrere möglichkeiten:     notify_on: ["ERROR", "CRITICAL", "UPDATE"]
+  reset_cooldown_on_start: true  # Cooldown-Zähler wird beim Start zurückgesetzt
+#  reset_cooldown_on_start: false  # Cooldown-Zähler wird beim Start nicht zurückgesetzt
   # E-Mail
   email:
-    enabled: enable
+    enabled: true
     to: "dein@email.tld"
     from: "dyndns-bot@email.tld"
     smtp_server: "smtp.example.com"
@@ -28,37 +29,43 @@ notify:
     smtp_user: "smtp-user"
     smtp_pass: "smtp-pass"
     notify_on: ["ERROR", "CRITICAL", "UPDATE"]
+    cooldown: 30  # Kein Cooldown für E-Mail
 
   # ntfy Push
   ntfy:
-    enabled: enable
+    enabled: true
     url: "https://ntfy.sh/dein-topic"
     notify_on: ["ERROR", "CRITICAL"]
+    cooldown: 10  # Minuten Cooldown für ntfy
 
   # Webhook (z.B. für eigene HTTP-Services)
   webhook:
-    enabled: enable
+    enabled: true
     url: "https://your-webhook-service"
     notify_on: ["ERROR", "CRITICAL", "UPDATE"]
+    cooldown: 5
 
   # Telegram
   telegram:
-    enabled: enable
+    enabled: true
     bot_token: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
     chat_id: "123456789"
     notify_on: ["ERROR", "CRITICAL"]
+    cooldown: 20
 
   # Discord
   discord:
-    enabled: enable
+    enabled: true
     webhook_url: "https://discord.com/api/webhooks/..."
     notify_on: ["ERROR", "CRITICAL"]
+    cooldown: 0  # Kein Cooldown für Discord
 
   # Slack
   slack:
-    enabled: enable
+    enabled: true
     webhook_url: "https://hooks.slack.com/services/..."
     notify_on: ["ERROR", "CRITICAL"]
+    cooldown: 15
 
 # Liste der zu aktualisierenden Provider
 providers:
