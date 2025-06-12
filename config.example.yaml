@@ -15,6 +15,7 @@ ip_service: "https://api.ipify.org"
 
 # Benachrichtigungen (alle Optionen, alles optional)
 notify:
+# Bei notify_on: gibt es mehrere möglichkeiten:     notify_on: ["ERROR", "CRITICAL", "UPDATE"]
   # E-Mail
   email:
     enabled: false
