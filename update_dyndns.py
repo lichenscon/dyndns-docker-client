@@ -308,23 +308,40 @@ def save_last_ip(ip_version, ip):
     except Exception as e:
         log(f"Error saving last IP ({ip_version}): {e}", "ERROR", section="MAIN")
 
-def update_provider(provider, ip, ip6=None, log_success_if_nochg=True):
+def update_provider(provider, ip, ip6=None, log_success_if_nochg=True, old_ip=None, old_ip6=None):
     """
     Selects the appropriate update function for the provider based on the protocol.
     Logs the result and returns True (update/nochg) or False (error).
     """
     try:
+        provider_name = provider.get("name", "PROVIDER")
         if provider.get("protocol") == "cloudflare":
             result = update_cloudflare(provider, ip, ip6)
             if result == "updated":
-                log(f"Provider '{provider.get('name')}' updated successfully.", "INFO", section="CLOUDFLARE")
-                send_notifications(config.get("notify"), "UPDATE", "IP address updated successfully.", "DynDNS Update")
+                msg = f"Provider '{provider_name}' updated successfully. New IP: {ip}"
+                if old_ip is not None:
+                    msg += f" (previous: {old_ip})"
+                log(msg, "INFO", section="CLOUDFLARE")
+                send_notifications(
+                    config.get("notify"),
+                    "UPDATE",
+                    msg,
+                    subject=f"DynDNS Update: {provider_name}",
+                    service_name=provider_name
+                )
             elif result == "nochg":
                 if log_success_if_nochg:
-                    log(f"Provider '{provider.get('name')}' was already up to date, no update performed.", "INFO", section="CLOUDFLARE")
+                    log(f"Provider '{provider_name}' was already up to date, no update performed.", "INFO", section="CLOUDFLARE")
             else:
-                log(f"Provider '{provider.get('name')}' could not be updated.", "ERROR", section="CLOUDFLARE")
-                send_notifications(config.get("notify"), "ERROR", "Update failed!", "DynDNS Error")
+                error_msg = f"Provider '{provider_name}' could not be updated."
+                log(error_msg, "ERROR", section="CLOUDFLARE")
+                send_notifications(
+                    config.get("notify"),
+                    "ERROR",
+                    f"Update failed for provider '{provider_name}'.",
+                    subject=f"DynDNS Error: {provider_name}",
+                    service_name=provider_name
+                )
             return result == "updated" or (log_success_if_nochg and result == "nochg")
         if provider.get("protocol") == "ipv64":
             result = update_ipv64(provider, ip, ip6)
