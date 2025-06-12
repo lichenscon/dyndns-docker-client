@@ -23,8 +23,8 @@ notify:
     from: "dyndns-bot@email.tld"
     smtp_server: "smtp.example.com"
     smtp_port: 587           # Standard: 587 (STARTTLS), 465 (SSL), 25 (kein SSL)
-    smtp_ssl: false          # true = SSL (Port 465), false = kein SSL/STARTTLS
-    smtp_starttls: true      # true = STARTTLS (Port 587), false = kein STARTTLS
+#    smtp_ssl: false          # Muss nicht gesetzt werden: true = SSL (Port 465), false = kein SSL/STARTTLS
+#    smtp_starttls: true      # Muss nicht gesetzt werden: true = STARTTLS (Port 587), false = kein STARTTLS
     smtp_user: "smtp-user"
     smtp_pass: "smtp-pass"
     notify_on: ["ERROR", "CRITICAL", "UPDATE"]
