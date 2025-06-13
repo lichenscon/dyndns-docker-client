@@ -9,6 +9,7 @@ RUN pip install --no-cache-dir requests pyyaml
 COPY update_dyndns.py /app/update_dyndns.py
 COPY notify.py /app/notify.py
 COPY config.example.yaml /app/config.example.yaml
+COPY gen_conf.py /app/gen_conf.py
 
 # Erstelle Config-Ordner (falls nicht durch Volume überschrieben)
 RUN mkdir -p /app/config
