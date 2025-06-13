@@ -1,47 +1,57 @@
-# Beispiel-Konfiguration für DynDNS Docker Client
-# Kopiere diese Datei zu config/config.yaml und passe sie an deine Bedürfnisse an!
+# Example configuration for DynDNS Docker Client
+# Copy this file to config/config.yaml and adjust it to your needs!
 
-# Intervall in Sekunden für die IP-Prüfung (z.B. alle 5 Minuten)
+# Interval in seconds for IP checks (e.g. every 5 minutes)
 timer: 300
 
-# Protokollierungsstufe
-loglevel: INFO   # Mögliche Werte: DEBUG, INFO, WARNING, ERROR, CRITICAL
+# Logging level
+loglevel: INFO   # Possible values: DEBUG, INFO, WARNING, ERROR, CRITICAL
 
-# Service zum Abrufen der öffentlichen IPv4-Adresse
+# Service to fetch the public IPv4 address
 ip_service: "https://api.ipify.org"
+# ip_service: "https://ipv4.icanhazip.com"
+# ip_service: "https://checkip.amazonaws.com"
+# ip_service: "https://ifconfig.me/ip"
+# ip_service: "https://ident.me"
+# ip_service: "https://myexternalip.com/raw"
 
-# Service zum Abrufen der öffentlichen IPv6-Adresse (optional)
+# Service to fetch the public IPv6 address (optional)
 # ip6_service: "https://api64.ipify.org"
+# ip6_service: "https://ipv6.icanhazip.com"
+# ip6_service: "https://ifconfig.co/ip"
+# ip6_service: "https://ident.me"
+# ip6_service: "https://myexternalip.com/raw"
 
-skip_update_on_startup: true  # Wenn true, werden beim Container-Start keine Provider-Updates durchgeführt, wenn die IP gleich geblieben ist.
-# Wenn false oder nicht gesetzt, wird beim Start immer ein Update gemacht, auch wenn die IP gleich ist.
+skip_update_on_startup: true  # If true, no provider updates will be performed on container start if the IP has not changed.
+# If false or not set, an update will always be performed on startup, even if the IP is the same.
 
-# Benachrichtigungen (alle Optionen, alles optional)
+# Notifications (all options optional)
 notify:
-  reset_cooldown_on_start: true  # Cooldown-Zähler wird beim Start zurückgesetzt
-#  reset_cooldown_on_start: false  # Cooldown-Zähler wird beim Start nicht zurückgesetzt
+  reset_cooldown_on_start: true  # Cooldown timers are reset on container start
+#  reset_cooldown_on_start: false  # Cooldown timers are not reset on container start
+
   # E-Mail
   email:
     enabled: true
-    to: "dein@email.tld"
+    to: "your@email.tld"
     from: "dyndns-bot@email.tld"
     smtp_server: "smtp.example.com"
-    smtp_port: 587           # Standard: 587 (STARTTLS), 465 (SSL), 25 (kein SSL)
-#    smtp_ssl: false          # Muss nicht gesetzt werden: true = SSL (Port 465), false = kein SSL/STARTTLS
-#    smtp_starttls: true      # Muss nicht gesetzt werden: true = STARTTLS (Port 587), false = kein STARTTLS
+    smtp_port: 587           # Default: 587 (STARTTLS), 465 (SSL), 25 (no SSL)
+#    smtp_ssl: false          # Not required: true = SSL (port 465), false = no SSL/STARTTLS
+#    smtp_starttls: true      # Not required: true = STARTTLS (port 587), false = no STARTTLS
     smtp_user: "smtp-user"
     smtp_pass: "smtp-pass"
     notify_on: ["ERROR", "CRITICAL", "UPDATE"]
-    cooldown: 30  # Kein Cooldown für E-Mail
+    cooldown: 30  # Cooldown in minutes for email
 
   # ntfy Push
   ntfy:
     enabled: true
-    url: "https://ntfy.sh/dein-topic"
+    url: "https://ntfy.sh/your-topic"
     notify_on: ["ERROR", "CRITICAL"]
-    cooldown: 10  # Minuten Cooldown für ntfy
+    cooldown: 10  # Cooldown in minutes for ntfy
 
-  # Webhook (z.B. für eigene HTTP-Services)
+  # Webhook (e.g. for custom HTTP services)
   webhook:
     enabled: true
     url: "https://your-webhook-service"
@@ -61,7 +71,7 @@ notify:
     enabled: true
     webhook_url: "https://discord.com/api/webhooks/..."
     notify_on: ["ERROR", "CRITICAL"]
-    cooldown: 0  # Kein Cooldown für Discord
+    cooldown: 0  # No cooldown for Discord
 
   # Slack
   slack:
@@ -70,79 +80,78 @@ notify:
     notify_on: ["ERROR", "CRITICAL"]
     cooldown: 15
 
-# Liste der zu aktualisierenden Provider
+# List of providers to update
 providers:
-  # DuckDNS Beispiel
+  # DuckDNS example
   - name: duckdns
     protocol: dyndns2
     url: "https://www.duckdns.org/update"
     token: "your-duckdns-token"
-    domain: "example"  # DuckDNS erwartet 'domain'
+    domain: "example"  # DuckDNS expects 'domain'
 
-  # NoIP Beispiel
+  # NoIP example
   - name: noip-home
     protocol: dyndns2
     url: "https://dynupdate.no-ip.com/nic/update"
     username: "your-noip-username"
     password: "your-noip-password"
-    hostname: "example.ddns.net"  # NoIP erwartet 'hostname'
+    hostname: "example.ddns.net"  # NoIP expects 'hostname'
 
-  # Dynu Beispiel
+  # Dynu example
   - name: dynu
     protocol: dyndns2
     url: "https://api.dynu.com/nic/update"
     auth_method: "basic"
-    username: "deinuser"
-    password: "deinpass"
-    hostname: "deinedomain.dynu.net"  # Dynu erwartet 'hostname'
+    username: "youruser"
+    password: "yourpass"
+    hostname: "yourdomain.dynu.net"  # Dynu expects 'hostname'
 
-  # Cloudflare Beispiel (IPv4 und IPv6)
-  - name: mein-cloudflare
+  # Cloudflare example (IPv4 and IPv6)
+  - name: my-cloudflare
     protocol: cloudflare
-    zone: "deinedomain.tld"
-    api_token: "dein_cloudflare_api_token"
+    zone: "yourdomain.tld"
+    api_token: "your_cloudflare_api_token"
     record_name: "sub.domain.tld"
 
-  # ipv64.net Beispiel (Token)
-  - name: mein-ipv64
+  # ipv64.net example (Token)
+  - name: my-ipv64
     protocol: ipv64
-    # url ist NICHT nötig für ipv64, wird im Code fest gesetzt!
-    auth_method: "token"  # oder "basic" oder "bearer"
-    token: "dein_update_token"
-    domain: "deinedomain.ipv64.net"
+    # url is NOT needed for ipv64, it is hardcoded in the code!
+    auth_method: "token"  # or "basic" or "bearer"
+    token: "your_update_token"
+    domain: "yourdomain.ipv64.net"
 
-  # ipv64.net Beispiel (Basic Auth)
-  - name: mein-ipv64-basic
+  # ipv64.net example (Basic Auth)
+  - name: my-ipv64-basic
     protocol: ipv64
     auth_method: "basic"
-    token: "dein_update_token"
-    domain: "deinedomain.ipv64.net"
+    token: "your_update_token"
+    domain: "yourdomain.ipv64.net"
 
-  # ipv64.net Beispiel (Bearer Auth)
-  - name: mein-ipv64-bearer
+  # ipv64.net example (Bearer Auth)
+  - name: my-ipv64-bearer
     protocol: ipv64
     auth_method: "bearer"
-    token: "dein_update_token"
-    domain: "deinedomain.ipv64.net"
+    token: "your_update_token"
+    domain: "yourdomain.ipv64.net"
 
-  # dyndns2 Beispiel mit Bearer Auth
-  - name: beispiel-bearer
+  # dyndns2 example with Bearer Auth
+  - name: example-bearer
     protocol: dyndns2
     url: "https://example.com/nic/update"
     auth_method: "bearer"
-    token: "dein_bearer_token"
-    hostname: "deinhost.example.com"
+    token: "your_bearer_token"
+    hostname: "yourhost.example.com"
 
-  # dyndns2 Beispiel mit host statt hostname/domain
-  - name: beispiel-mit-host
+  # dyndns2 example with host instead of hostname/domain
+  - name: example-with-host
     protocol: dyndns2
     url: "https://example.com/nic/update"
-    token: "dein_token"
-    host: "deinhost.example.com"
+    token: "your_token"
+    host: "yourhost.example.com"
 
-
-# Hinweise:
-# - Für dyndns2-Provider ist das Feld 'url' Pflicht!
-# - Für cloudflare und ipv64 ist die URL im Code fest hinterlegt.
-# - Je nach Provider werden die Felder 'domain', 'hostname' oder 'host' benötigt.
-# - auth_method kann "token", "basic" oder "bearer" sein (je nach Provider/API).
+# Notes:
+# - For dyndns2 providers, the 'url' field is required!
+# - For cloudflare and ipv64, the URL is hardcoded in the code.
+# - Depending on the provider, the fields 'domain', 'hostname', or 'host' are required.
+# - auth_method can be "token", "basic", or "bearer" (depending on provider/API).
