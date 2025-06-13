@@ -261,15 +261,21 @@ def validate_config(config):
     Checks config.yaml for required fields and prints errors with line numbers.
     Returns True if everything is fine, otherwise False.
     """
-    required_top = ["timer", "providers"]
+    required_top = ["timer", "providers", "ip_service"]
     allowed_protocols = ("cloudflare", "ipv64", "dyndns2")
+    
+    # Check for required top-level keys
     for key in required_top:
         if key not in config:
             log(f"Missing key '{key}' in config.yaml.", "ERROR")
             return False
-    if not isinstance(config["providers"], list):
-        log("The field 'providers' must be a list.", "ERROR")
+    
+    # Validate that 'providers' is a non-empty list
+    if not isinstance(config["providers"], list) or not config["providers"]:
+        log("The field 'providers' must be a non-empty list.", "ERROR")
         return False
+
+    # Validate each provider
     for idx, provider in enumerate(config["providers"]):
         if "protocol" not in provider:
             log(f"Missing field 'protocol' in provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
@@ -281,14 +287,15 @@ def validate_config(config):
                 "ERROR"
             )
             return False
-        if "url" not in provider and provider["protocol"] not in ("cloudflare", "ipv64"):
-            log(f"Missing field 'url' in provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
-            return False
         if provider["protocol"] == "cloudflare":
             for field in ("zone", "api_token", "record_name"):
                 if field not in provider:
                     log(f"Missing field '{field}' in Cloudflare provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
                     return False
+        elif provider["protocol"] in ("dyndns2", "ipv64") and "url" not in provider:
+            log(f"Missing field 'url' in provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
+            return False
+
     return True
 
 def _ip_cache_file(ip_version):
