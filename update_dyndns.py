@@ -261,40 +261,59 @@ def validate_config(config):
     Checks config.yaml for required fields and prints errors with line numbers.
     Returns True if everything is fine, otherwise False.
     """
-    required_top = ["timer", "providers", "ip_service"]
+    required_top = ["timer", "providers"]
     allowed_protocols = ("cloudflare", "ipv64", "dyndns2")
-    
-    # Check for required top-level keys
+
+    # Top-level required keys
     for key in required_top:
         if key not in config:
             log(f"Missing key '{key}' in config.yaml.", "ERROR")
             return False
-    
-    # Validate that 'providers' is a non-empty list
+
+    # Providers must be a non-empty list
     if not isinstance(config["providers"], list) or not config["providers"]:
         log("The field 'providers' must be a non-empty list.", "ERROR")
         return False
 
-    # Validate each provider
+    # Require at least one IP service (IPv4 or IPv6)
+    if "ip_service" not in config and "ip6_service" not in config:
+        log("Missing 'ip_service' or 'ip6_service' in config.yaml. At least one is required.", "ERROR")
+        return False
+
     for idx, provider in enumerate(config["providers"]):
+        pname = provider.get('name', f'#{idx+1}')
+        # Protocol existence and validity
         if "protocol" not in provider:
-            log(f"Missing field 'protocol' in provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
+            log(f"Missing field 'protocol' in provider {pname} in config.yaml.", "ERROR")
             return False
         if provider["protocol"] not in allowed_protocols:
             log(
-                f"Invalid field 'protocol' ('{provider['protocol']}') in provider #{idx+1} ({provider.get('name','?')}) in config.yaml. "
+                f"Invalid field 'protocol' ('{provider['protocol']}') in provider {pname} in config.yaml. "
                 f"Allowed: {', '.join(allowed_protocols)}.",
                 "ERROR"
             )
             return False
+
+        # Protocol-specific required fields
         if provider["protocol"] == "cloudflare":
             for field in ("zone", "api_token", "record_name"):
                 if field not in provider:
-                    log(f"Missing field '{field}' in Cloudflare provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
+                    log(f"Missing field '{field}' in Cloudflare provider {pname} in config.yaml.", "ERROR")
                     return False
-        elif provider["protocol"] in ("dyndns2", "ipv64") and "url" not in provider:
-            log(f"Missing field 'url' in provider #{idx+1} ({provider.get('name','?')}) in config.yaml.", "ERROR")
-            return False
+        elif provider["protocol"] in ("dyndns2", "ipv64"):
+            if "url" not in provider:
+                log(f"Missing field 'url' in provider {pname} in config.yaml.", "ERROR")
+                return False
+            # Require one of hostname/domain/host
+            if not any(k in provider for k in ("hostname", "domain", "host")):
+                log(f"Missing hostname/domain/host in provider {pname} in config.yaml.", "ERROR")
+                return False
+            # Require authentication fields: username+password or token
+            has_userpass = "username" in provider and "password" in provider
+            has_token = "token" in provider
+            if not (has_userpass or has_token):
+                log(f"Missing authentication fields (username+password or token) in provider {pname} in config.yaml.", "ERROR")
+                return False
 
     return True
 
